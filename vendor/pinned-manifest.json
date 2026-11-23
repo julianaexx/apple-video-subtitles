@@ -1,0 +1,462 @@
+{
+  "version": 1,
+  "upstream": "https://github.com/rexchen1803/apple-video-subtitles",
+  "files": {
+    "08afb047c1fd259451cac81920d9d9a6fe7792ce/payloads/surge/f1/previews/2026/19-mexico/master.js": {
+      "bytes": 140399,
+      "sha256": "af765c774cf89f07bbf3448735d31dbce147da3e743c22d4d4f0192f750d9ba0"
+    },
+    "08afb047c1fd259451cac81920d9d9a6fe7792ce/payloads/surge/f1/previews/2026/19-mexico/playlist.js": {
+      "bytes": 140401,
+      "sha256": "ccecbbb809b629656e243d89f3ad15a9d325a8e4193fce47da6cd14edc6b0555"
+    },
+    "08afb047c1fd259451cac81920d9d9a6fe7792ce/payloads/surge/f1/previews/2026/19-mexico/vtt.js": {
+      "bytes": 516056,
+      "sha256": "9200f14ec6f43eac68a27025e805e7bea01cb4c2ad1c72be87ae9054317ac2c5"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-01-australian.js": {
+      "bytes": 278722,
+      "sha256": "72d81bf4f92af1a9d84bcc9d41cf40c67bcabaf19385e6f7840668d484211966"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-02-chinese.js": {
+      "bytes": 324307,
+      "sha256": "e2f2b4bf33f70fcae338b5a517f773651621b90a7a671b28ac1e2807ba119335"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-03-japanese.js": {
+      "bytes": 321686,
+      "sha256": "735e4ab999ee6484447966f167acb00893985d89b2a72784b0ef1889d03ac0b4"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-04-miami.js": {
+      "bytes": 318782,
+      "sha256": "8aabc9b8ac868a2c61085ff934fd25ecc7fa9c89dd1bae073dc8d3973dc41efd"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-05-canadian.js": {
+      "bytes": 305872,
+      "sha256": "87ad3633d32f90f86da779f6fc48d6dcd9bd760e6df30588678902590971023c"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-06-monaco.js": {
+      "bytes": 452752,
+      "sha256": "086fb51b3063f568b92ffe6fde2ac4224a3599010a058075539fd35832d67816"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-07-barcelona-catalunya.js": {
+      "bytes": 314789,
+      "sha256": "a988147d5b74bd46a682f672c6259b38097027c629ef2f99bd45c80a19c00557"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-08-austrian.js": {
+      "bytes": 270984,
+      "sha256": "de61aae3331fe0511ba53c50e10ea41d6999ebc121468bee8fe4ed93d1eb5c73"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-09-british.js": {
+      "bytes": 264590,
+      "sha256": "ccda101be6fa1dd9ed5c9146f884f87aea4e13cf24d620bccd35edb1ed2170e0"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-10-belgian.js": {
+      "bytes": 303511,
+      "sha256": "fff0add2d15c78e629fb8d6474b2e4b66e0c84ee2e8bf9f11b78e606f3499550"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-11-hungarian.js": {
+      "bytes": 395273,
+      "sha256": "0da596156406adbd1738b861ed5052063edacada6fd2d700000a4766c4e7606b"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-12-netherlands.js": {
+      "bytes": 355217,
+      "sha256": "bcda35b664a09197cd4e9323b91b06499acb9d4d495d48a0a5e0fc5ad1c8ac94"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-13-spain.js": {
+      "bytes": 372020,
+      "sha256": "dade7e5119da8c973e8987d16d5143f52f66e87357265aef67a3315d5cff8c54"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-15-azerbaijan.js": {
+      "bytes": 310108,
+      "sha256": "ccb15a08e9aabaa6a8bb522b696272eb26e089b00c75ae2d22166328744a931c"
+    },
+    "2cb9e0f6a452c1df371df0dff446514540a379ab/payloads/surge/f1/2026/surge-formal-v9-f1-16-bahrain-malaysia.js": {
+      "bytes": 525026,
+      "sha256": "aa6f3d7a6c523b6b153b6ffb285fecb8fa3edbc641c41dbeb47ffbb0a2b4cf9c"
+    },
+    "63c5b25275144f3a3701add3c830c18882ffd4c2/payloads/surge/f1/previews/2026/20-sao-paulo/master.js": {
+      "bytes": 140353,
+      "sha256": "b9926e90a3b435f19504a52a4b64bc8cce573a7505a8590fe0e99f0e5a16ecb2"
+    },
+    "63c5b25275144f3a3701add3c830c18882ffd4c2/payloads/surge/f1/previews/2026/20-sao-paulo/playlist.js": {
+      "bytes": 140355,
+      "sha256": "4bcea2c1d82100aacd2fc611ba0b368e13b0ed5e3f464d1a29373ec19237e50d"
+    },
+    "63c5b25275144f3a3701add3c830c18882ffd4c2/payloads/surge/f1/previews/2026/20-sao-paulo/vtt.js": {
+      "bytes": 454550,
+      "sha256": "85916dc39c51ee06303bae8b70d7653c952c4245144da4a1531f81578ab3ccd6"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e01.js": {
+      "bytes": 4775,
+      "sha256": "272c3d8433701988b084d3d4c223e5a14ad3185433a529eaa1f2813df5b65b4a"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e02.js": {
+      "bytes": 4775,
+      "sha256": "dbd246736f64f8421fe949cc69de2879854fe18468c3542800e5d3a7a16d648c"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e03.js": {
+      "bytes": 4775,
+      "sha256": "cc4e1dcfd208dd26ec300f2b0ad2fb044bc48caae556e2b239158ed5845ac3bd"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e04.js": {
+      "bytes": 4775,
+      "sha256": "3c77b2e4bfc236889494565b30644391e3f4a1a157d0a4bf096918247b2b416b"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e05.js": {
+      "bytes": 4775,
+      "sha256": "96e239cba1a228ea8186ba9bbee32ff42f0064a79f8f9e5353159bc1e7dcc48c"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e06.js": {
+      "bytes": 4775,
+      "sha256": "3c95522206a93c46ff88ab36f61cfbfe24d3a429f69af3248d7f93083e9682d2"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e07.js": {
+      "bytes": 4775,
+      "sha256": "43f28227a28aef1ed8c98f024897e4f56bc57fe63594be3248a9de6d78e649c3"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e08.js": {
+      "bytes": 4775,
+      "sha256": "2d01488cbccfc39129c38a7041f94c5c30d0777a4b1b146fec61b3da6c08d8af"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e01.js": {
+      "bytes": 3003,
+      "sha256": "3067439afc9a69be0c15505a58c88ce463872787d947a7a192ce73c329271d0a"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e02.js": {
+      "bytes": 3003,
+      "sha256": "c311abdaf7df010853f3e0a4ff0fdf1c4e63e8f32a9f7816d4bead047fd6ab6b"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e03.js": {
+      "bytes": 3003,
+      "sha256": "7535238944865bafc9c2cbd6c52fc7b1471c2343521460ec6644e822550a812e"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e04.js": {
+      "bytes": 3003,
+      "sha256": "23fc4eb8aa43397e858a8a81b710d1ae43b25f8b656f6a8878f7403fde21aa39"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e05.js": {
+      "bytes": 3003,
+      "sha256": "2106833b789d59afa0b3d6867f16086ecb2b8c46671a432036db805444349aab"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e06.js": {
+      "bytes": 3003,
+      "sha256": "dd188bb0ae34b5c1851f9b145f29ce26ab55dc05b38e751996173ae3e9e907a1"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e07.js": {
+      "bytes": 3003,
+      "sha256": "283c9838f969806d5a055129697e39a8160760b3c7fff177af35ea46bf8223df"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e08.js": {
+      "bytes": 3003,
+      "sha256": "770d19ad4ce82876a84959e7da0f7bb23fda7ff1d731d34215556cc89b59f059"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e01.js": {
+      "bytes": 68152,
+      "sha256": "1bff49b3466456d691fcde2de28ff29896a00872d50c1241c33c2e814bd9054e"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e02.js": {
+      "bytes": 57373,
+      "sha256": "cbd5754319cd6962a1ecb5595f4388321c43bc0b5163b1b778e667b0c3a29030"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e03.js": {
+      "bytes": 68208,
+      "sha256": "4d37485e3fa002f4dede88ab488774a779c205118ac5c6ba2aeac9a2a53098f1"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e04.js": {
+      "bytes": 46959,
+      "sha256": "e670b3816a35b0801f0adb428e6b2b8b6dd3362d544ec64f159257f7d994148f"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e05.js": {
+      "bytes": 63870,
+      "sha256": "88436f0b905aa5a7e8d7ed1e77a42147e538d7cc9b4b5976ed8f9d2625a0b649"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e06.js": {
+      "bytes": 55741,
+      "sha256": "7d4a1eddc876d970f7a325e34243368f0093243ff92dd01a97b98011af608bf2"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e07.js": {
+      "bytes": 50800,
+      "sha256": "3fb789e8c7b2205bc26f6faee98d9e5cc96fc8473493be95e85a9dee7818c296"
+    },
+    "9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e08.js": {
+      "bytes": 76505,
+      "sha256": "f20edd9bd1b90f0e7044684b8baa52cd0e641902b05868a9ef896f03bffa454e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1988-big/manifest.js": {
+      "bytes": 5744,
+      "sha256": "51960069d9f558edb4aade386c0177ae5fa8a97bf6cc18a7037fd689c0eb80f0"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1988-big/playlist.js": {
+      "bytes": 5917,
+      "sha256": "acb8676496c1c3c9403081e3648059c73ea4b38a89b369f9c5a443c3b97a5df7"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1988-big/subtitle.js": {
+      "bytes": 163945,
+      "sha256": "2e2aac63e31a3054a3dc3eb8b2f759edd6443bba44580db59b4729a7ece603ad"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1989-dead-poets-society/manifest.js": {
+      "bytes": 5759,
+      "sha256": "36129354c4105594382acb64d1ca302d8515e8a69ecb7cdfa836faaf02c0c2df"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1989-dead-poets-society/playlist.js": {
+      "bytes": 5934,
+      "sha256": "64b1881c93d4a695148415cea70693ba28cbed3bf3594751b562462077952e47"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1989-dead-poets-society/subtitle.js": {
+      "bytes": 204987,
+      "sha256": "4379e224d0ecb62fd6a02fa4928bdd5afdc6673fe909b1d6b020c3e6276a2eb3"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1993-dave/manifest.js": {
+      "bytes": 5745,
+      "sha256": "4deb11d333246ac8b52aaf6199a832c39c622ddf0e3254d80e98310fe5a433a3"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1993-dave/playlist.js": {
+      "bytes": 5920,
+      "sha256": "c20b00ffe700c70fff1c6b36a338639346db342356ff13c0935454d94f439de2"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1993-dave/subtitle.js": {
+      "bytes": 116057,
+      "sha256": "bd51fd691cfaceb7614d97834d81ea79f8f468878dbe44011f240efecb16d445"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1994-forrest-gump/manifest.js": {
+      "bytes": 5753,
+      "sha256": "562f86c7b3130924ba554ae183561b99a93ee6eeaee9d55b78b97bde48688b9c"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1994-forrest-gump/playlist.js": {
+      "bytes": 5928,
+      "sha256": "1d55aaf37271de04a0d3b3fc4ae9116252255c49c44dd53b73b3ce21a1344008"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1994-forrest-gump/subtitle.js": {
+      "bytes": 222884,
+      "sha256": "1c905c30cddfc467845b215b4b3738e8eb70dbfa2e287a8228afa01228a44576"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1994-pulp-fiction/manifest.js": {
+      "bytes": 5753,
+      "sha256": "48f77af2be5ca0fec160da6a17cc4dc354d7c8249b0a5f3312800cd5d5dc0efc"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1994-pulp-fiction/playlist.js": {
+      "bytes": 5928,
+      "sha256": "ae561436ec24a0f3f1291ab41ef78024c30b8c1eea82f4400eb5271e3ab0d8d6"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1994-pulp-fiction/subtitle.js": {
+      "bytes": 161092,
+      "sha256": "54f0ff33677e0c04d0895dd30dcbd6107748fea53583f3b75926abaee9a5d365"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-12-monkeys/manifest.js": {
+      "bytes": 5751,
+      "sha256": "80edb841d9640ea99eb50764e317122b7c1ce8b554f4705c010bfacc196787b5"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-12-monkeys/playlist.js": {
+      "bytes": 5926,
+      "sha256": "64e512080101d89aa5aa67bf4a40c1a9cb667ed54726e55a0ec3c95ac4d832f5"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-12-monkeys/subtitle.js": {
+      "bytes": 138512,
+      "sha256": "49a11d856466a3739f6d1f51d53fb09412b94a9dc756e0c7f8398bd1c15efeab"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-bad-boys/manifest.js": {
+      "bytes": 5745,
+      "sha256": "5afbe201aea0a2c24e1a259e9239e1eb46f6d06fb471e07202f29ff141704505"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-bad-boys/playlist.js": {
+      "bytes": 5908,
+      "sha256": "c3af5021d8f54e6876e11ca31277404ee117698110a177ffd9b3f08f426daad6"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-bad-boys/subtitle.js": {
+      "bytes": 203524,
+      "sha256": "2a6b422a1e59894b576675b6e1a8ca33f3d60211ffc21b1d86de3478ebd46bfe"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-clueless/manifest.js": {
+      "bytes": 5749,
+      "sha256": "06f4a05ab4b6fbb4800cdd19789f7b498178ad808995c05d5dbceddab443097f"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-clueless/playlist.js": {
+      "bytes": 5924,
+      "sha256": "c441072953b1d7927db806e20cfe382ddb5e62f9c5d373275a0da21286a7b630"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/1995-clueless/subtitle.js": {
+      "bytes": 163000,
+      "sha256": "28ea83fd81a186a79ba16fd9e1e50466647f2d73db8fad32ba8738039a43abdb"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2002-minority-report/manifest.js": {
+      "bytes": 5756,
+      "sha256": "02df7ba70022b9ac518c1a3ff15bc2f95b8c08594f76bff44bf4cb8be6d44f1a"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2003-master-and-commander/surge-safe-full-v33-master-2003-master-and-commander.js": {
+      "bytes": 5721,
+      "sha256": "58a214a59dd7b339df801370351433833b7f992ddf8e524f8565de69151b2720"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2003-master-and-commander/surge-safe-full-v33-playlist-2003-master-and-commander.js": {
+      "bytes": 5896,
+      "sha256": "461a8002bf3a15d1c5889010a9695ef9abb8f9b4f4bac456881b7ca153f90500"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2003-master-and-commander/surge-safe-full-v33-vtt-2003-master-and-commander.js": {
+      "bytes": 165804,
+      "sha256": "c4f173910381c3ba79fe295800053e1f4a517d5baeeb2f69b9d5997ea15233a1"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2004-anchorman/manifest.js": {
+      "bytes": 5750,
+      "sha256": "85152d1b3d620c2cb9da01cca149c290ee590da975092cae08247d8225635a0e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2004-anchorman/playlist.js": {
+      "bytes": 5925,
+      "sha256": "629d6e2d4e4d6801d096af88d6b1532024645b0827abcd02df6320210bcfc0ab"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2004-anchorman/subtitle.js": {
+      "bytes": 190643,
+      "sha256": "13a51dc37fd7676f4d8c29d5ff9fb90da3a059d03bb0165b12844e15ac244ea0"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2006-talladega-nights/manifest.js": {
+      "bytes": 5757,
+      "sha256": "61bad38e4a04f443a46994bd7a480a82b6bc5f30e7f7e12e28ce22d6bb65f94e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2006-talladega-nights/playlist.js": {
+      "bytes": 5932,
+      "sha256": "9a48537a48a15610ea276c37c6869e4a10c6a3d9f2c2507a2db475cf9651aad0"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2006-talladega-nights/subtitle.js": {
+      "bytes": 213775,
+      "sha256": "a956a1667f3f5581b0a88ad8eb130e73250cec3537b2af8f32885b5230911f0e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-body-of-lies/manifest.js": {
+      "bytes": 5753,
+      "sha256": "a207ac3be8b8195802ad61f4194be9e76cd679da90da67039cf2fdfed886174e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-body-of-lies/playlist.js": {
+      "bytes": 5928,
+      "sha256": "5b4d4aa8040432b805e9f1f39de7ece171862ed3c7f6817109b88b5cf24f6bf3"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-body-of-lies/subtitle.js": {
+      "bytes": 217904,
+      "sha256": "3eade3adf435cb187a60d3ff3fc90b804cdf25cfa09ccbc369e497b51a9342cf"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-get-smart/manifest.js": {
+      "bytes": 5750,
+      "sha256": "c6b110673990d4ef59a43338eec41c28f7dcb018f005e37a674cb6ce0fe04a0e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-get-smart/playlist.js": {
+      "bytes": 5925,
+      "sha256": "a1a80625ad4b215fb9be39a09ea06ed9319e907314a9125222a2c01a9bcd762a"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-get-smart/subtitle.js": {
+      "bytes": 166754,
+      "sha256": "8292307e86fd848455ce1819db4feaab6a9a7d65009c50af71cf1b109c197d6c"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-rachel-getting-married/manifest.js": {
+      "bytes": 5763,
+      "sha256": "239317d78bfe932049a835f2ab4b74269325b4764b4e3249d4244d05f55c9397"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-rachel-getting-married/playlist.js": {
+      "bytes": 5938,
+      "sha256": "bc31ac597180e4a927bd4b0922404ade794640f08f6c63cf86012688ad108acf"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2008-rachel-getting-married/subtitle.js": {
+      "bytes": 162738,
+      "sha256": "5efb61ee4849b2e75235acf9507fdae41dcf30638e7f5e6df37e30a65f1f4be5"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2009-julie-and-julia/manifest.js": {
+      "bytes": 5752,
+      "sha256": "2f76f943c42a23dc4444239d3a8daefe3aa72befc445c654b0c3f57adde08000"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2009-julie-and-julia/playlist.js": {
+      "bytes": 5915,
+      "sha256": "098ba3d00397445ad7ceb35cba03e63cca833d3c6cf756700f51ea6943ef8c23"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2009-julie-and-julia/subtitle.js": {
+      "bytes": 217035,
+      "sha256": "dd0f27446f4584d76808f60468879188f38125889099476bfdfb81ebdc23673e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2010-eat-pray-love/manifest.js": {
+      "bytes": 5754,
+      "sha256": "b91b6fb5f63215e678a25e63b9b34729b7f5be9347df2a4c9b23e3742f2cf18a"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2010-eat-pray-love/playlist.js": {
+      "bytes": 5929,
+      "sha256": "57652ab41693512c92d1a9fcd3be3a2e67c8d2a55c4d2fe9bc015262943d8009"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2010-eat-pray-love/subtitle.js": {
+      "bytes": 188921,
+      "sha256": "0c49241e02cb615dc555a2ae1f785c14e62991a556c39592835abd14b1c469e3"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2013-prisoners/manifest.js": {
+      "bytes": 5750,
+      "sha256": "19ac85637ce8ca3ad3c74c01d436257aa33e9125825ab64bdd5a7971b60b779b"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2013-prisoners/playlist.js": {
+      "bytes": 5925,
+      "sha256": "b789a09ed7d59afd983e5fe1f9545e6584c02c6b8ff70df7a617543000fecbe3"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2013-prisoners/subtitle.js": {
+      "bytes": 107537,
+      "sha256": "ebabc6bfa7d9ebd47acba5d2ed4505c9bf0e311b80ae625bebf07c40c09de24d"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2014-interstellar/manifest-current.js": {
+      "bytes": 5753,
+      "sha256": "243a18ec53e7dfe5ee3a078d584ca7746e359b382b02f8492a9764f08d909fd3"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2014-interstellar/playlist-current.js": {
+      "bytes": 5928,
+      "sha256": "47227f44a78b56de7fbabcc344714e185764d4be34d0b68db6a5d9d363c47fa1"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2014-interstellar/subtitle-current.js": {
+      "bytes": 233348,
+      "sha256": "acb465f5a495191b0e7862d662415a58827f2e3e7b7c845f79d43da05636d2ed"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2016-arrival/surge-safe-full-v15-master-2016-arrival.js": {
+      "bytes": 5712,
+      "sha256": "52ce3eede670f0d9a608047480a14a8827830a2f2098e695ccd10297e72b3372"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2016-arrival/surge-safe-full-v15-playlist-2016-arrival.js": {
+      "bytes": 5899,
+      "sha256": "29910eeee008c74aa4b9a3a08b47897ab5ea80a8ddd242427f714e0f93015fd9"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2016-arrival/surge-safe-full-v15-vtt-2016-arrival.js": {
+      "bytes": 91822,
+      "sha256": "8faa6074167dc5865d12cec08ac85c99caf4bf8c15c8a09c051eb1d9c77c2a3e"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2016-the-nice-guys/manifest.js": {
+      "bytes": 5754,
+      "sha256": "991370204748f57376c04c530894c1d4235c405f71227496952d4f1ffc7596de"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2016-the-nice-guys/playlist.js": {
+      "bytes": 5929,
+      "sha256": "3b08904e469323eda0066372f9704cfc1260bff24a064a56c51321a16d940315"
+    },
+    "a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/surge/movies/2016-the-nice-guys/subtitle.js": {
+      "bytes": 222379,
+      "sha256": "72e44acf31188f4fe55a02dbc88d9d6b66c9c90eb1fb2ffc808da9728e0eb0a7"
+    },
+    "a0b1bfe3a0eb5920f07941fdd4c43f23dcb7ced8/payloads/surge/f1/2026/surge-formal-v9-f1-17-singapore.js": {
+      "bytes": 292161,
+      "sha256": "5f5612ae5842e73df2ebb3454edd135102f94713a899aac7008cd2e09cf7a31c"
+    },
+    "b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/surge/f1/2026/surge-formal-v9-f1-19-mexico.js": {
+      "bytes": 397466,
+      "sha256": "bcbc18aea31c05475d4b5c223f422a218031d1f7335e8137619935fcf2c2a574"
+    },
+    "b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/surge/movies/2002-minority-report/playlist.js": {
+      "bytes": 6046,
+      "sha256": "22a7e6f87fe301abc988f38b1c641c5ded708033594f39852f4bd1bf0092ed30"
+    },
+    "b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/surge/movies/2002-minority-report/subtitle.js": {
+      "bytes": 201839,
+      "sha256": "d52cdc18dc2efeff5130949b62a5f3401897be586574476e4de7f0ff61d8fc89"
+    },
+    "b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/surge/runtime/f1/replay_track_master.js": {
+      "bytes": 8688,
+      "sha256": "16d8768e86c173b0b138aa4ec773daf84e9d834d727f3946b06d61fad5d586d5"
+    },
+    "b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/surge/runtime/f1/replay_track_playlist.js": {
+      "bytes": 7799,
+      "sha256": "2f2b70d5a816e0f740fe12327fba64c470b0123770a6e47d5307cace274fe95d"
+    },
+    "b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/uts-redirect.js": {
+      "bytes": 16394,
+      "sha256": "400f6a21275671753cb484cdc8a29ee590fa5cb5d93c431d14ef24f51a2d7a06"
+    },
+    "b958fddafa4d75c1534d9e0bb85151c02461c418/payloads/surge/f1/2026/surge-formal-v9-f1-18-united-states.js": {
+      "bytes": 268113,
+      "sha256": "33db32f3627570c7a658a49af49a3c2cf7f24941e8d47d7216245ebb6ee555c1"
+    }
+  }
+}

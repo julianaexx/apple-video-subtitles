@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "script_base_url": "https://captions.example.test",
+  "programs": [
+    {
+      "id": "fitness-sample",
+      "kind": "fitness",
+      "master_url": "https://video.example.test/master.m3u8",
+      "master_query": {"assetId": "sample-course"},
+      "master_sample": "master.m3u8",
+      "subtitle_url": "https://captions.example.test/vod/fitness-sample/index.m3u8"
+    }
+  ]
+}

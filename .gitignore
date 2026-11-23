@@ -1,0 +1,14 @@
+__pycache__/
+build/
+local/*
+!local/catalog.json
+.env
+.env.*
+*.har
+*.zip
+*.log
+*.p12
+*.pem
+*.key
+*.md
+*.MD

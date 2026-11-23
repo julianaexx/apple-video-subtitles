@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "vod_root": "../local/vod",
+  "live": {
+    "f1-sample": {
+      "source_url": "https://subtitles.example.test/english/index.m3u8",
+      "segment_hosts": ["subtitles.example.test"],
+      "translate_command": ["python", "tools/translate_libre.py"],
+      "translate_timeout": 5
+    }
+  }
+}

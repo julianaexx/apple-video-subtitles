@@ -1,0 +1,88 @@
+{
+  "project": "apple-video-subtitles",
+  "maintainer": "julianaexx",
+  "updated_date": "2026-11-23",
+  "timezone": "Asia/Shanghai",
+  "repository": "https://github.com/julianaexx/apple-video-subtitles",
+  "start_here": "Install Python 3.10+, Node.js 18+ and Git. Run python -B tools/dev.py from the repository root. jq 1.7.1 is optional for the jq test.",
+  "commands": {
+    "clone": "git clone https://github.com/julianaexx/apple-video-subtitles.git",
+    "build_and_test": "python -B tools/dev.py",
+    "with_jq": "python -B tools/dev.py --jq /path/to/jq",
+    "build_only": "python -B tools/build_release.py --check-published",
+    "windows_python_alias": "Use py -3 in place of python if needed.",
+    "mac_linux_python_alias": "Use python3 in place of python if needed."
+  },
+  "layout": {
+    "tools": "All build/translation tools, source templates and regression tests.",
+    "scripts": "Published remote runtimes. Fitness+ script is stable; F1 runtime is an unconfirmed experiment.",
+    "loon": "Published stable and F1 experimental subscriptions. Never overwrite these by running a base generator.",
+    "config/release.json": "Public profiles and immutable remote runtime URLs used to reproduce releases.",
+    "vendor/pinned": "Exact upstream scripts for 114 referenced commit/path pairs, checked by SHA-256 when Git history is absent.",
+    "vendor/pinned-manifest.json": "Checksums for pinned sources. No separate clone of original Git history required.",
+    "vendor/upstream-snapshot.json": "Upstream source attribution, snapshot revision and checksums.",
+    "payloads": "Full upstream payload source snapshot; includes recorded real HLS master structure used in regression tests.",
+    "subtitles": "Published Chinese M3U8/VTT resources, not embedded in plugin.",
+    "examples": "Synthetic samples and nonfunctional .test domain config templates.",
+    "tests/fixtures": "Sanitized clear caption packets and timestamps only. No original media/headers/credentials.",
+    "local/catalog.json": "Empty custom program catalog; keep private material under ignored local/.",
+    "build": "Ignored generated base and release artifacts."
+  },
+  "requirements": {
+    "python": ">=3.10, standard library only",
+    "node": ">=18",
+    "git": "required",
+    "jq": "optional; tests were run with jq 1.7.1",
+    "deepseek_key": "Set only in Loon plugin arguments; not needed by offline tests."
+  },
+  "verified_state": {
+    "fitness": "20261123d was confirmed working by the user on Loon 3.5.3(1014). Preserve the stable remote script and plugin.",
+    "f1": "f1cc-20261123b published; phone success has NOT been confirmed. Original experiment caused startup error and no Chinese track; it was withdrawn before this revision.",
+    "stable_runtime_commit": "c9ef73f4219628f57d7419151fe7c16083ccde99",
+    "f1_runtime_commit": "15dafa39bb06c472d8e0d656d3ea00adf8890e02",
+    "runtime_release_commit_before_development_import": "f5f6ccb",
+    "no_real_api_test": "No user API key is available in the development environment. All API tests use mocks."
+  },
+  "fitness_flow": [
+    "Keep original English track. Add zh-Hans based on donor metadata: AUTOSELECT=YES and original accessibility CHARACTERISTICS.",
+    "Add __loon_fitness_zh=1 to original HLS subtitle URLs. Let AVPlayer fetch natively; RESPONSE scripts rewrite playlists and translate VTT cue text.",
+    "Translation has its own 2-15s deadline (default 8s). Return original English response on failure. Store successful translations in 128 local cache slots.",
+    "Never reintroduce long request-script download/retry loops; those stalled training startup."
+  ],
+  "f1_flow_and_limits": [
+    "Generic F1 OnDemand detection uses UTS league metadata, not a race-specific asset allowlist.",
+    "Register source locally and rewrite only hlsUrl to hls-amt master bridge. Leave FairPlay certificate/license URLs untouched.",
+    "Do not add linear.tv.apple.com or play-edge.itunes.apple.com to MITM. The first host also carries FairPlay license traffic.",
+    "Master bridge GET has a four-second hard deadline; redirect to original native source on failure.",
+    "For recorded English CC1 CatchUp fragmented MP4, read clear GA94 CEA-608 packets without decrypting or modifying video. Use sample timing to construct WebVTT.",
+    "Use one low-bitrate caption source per CDN pathway. Translate sidecar cue text only; video responses never wait for translation.",
+    "This is not verified to cover CEA-708-only, other CDN formats, actual live streams, or all F1 replays.",
+    "Current computer could not fetch the actual linear main playlist; reconstructed recorded upstream master structure and real captured clear CC packets were tested."
+  ],
+  "release_workflow": [
+    "Edit tools/fitness_deepseek.js or tools/f1_cc608.js + tools/f1_cc_runtime.js. Keep stable and experimental behavior separate.",
+    "Run python -B tools/dev.py. Outputs stay under build/. --check-published will intentionally fail after source changes until the corresponding runtime is regenerated.",
+    "Copy only the changed compiled runtime from build/scripts/ to scripts/, commit it, then set its immutable commit URL in config/release.json.",
+    "Rebuild the plugins into build/, compare intended changes, copy selected output into loon/ and commit. Do not automatically promote experimental F1 to stable.",
+    "Run offline checks again. Push explicit commits to julianaexx/apple-video-subtitles only.",
+    "Verify every published URL returns HTTP 200 and matches git show <commit>:<path>. Document actual phone feedback in this JSON, not as a claim inferred from mocks."
+  ],
+  "upstream_refresh": [
+    "Get a separate full checkout of rexchen1803/apple-video-subtitles. It is a different repository/history; do not merge it blindly into this main branch.",
+    "Review and copy desired updated upstream payloads/client modules. Record the new upstream revision in vendor/upstream-snapshot.json.",
+    "Run python -B tools/bundle_upstream.py /path/to/upstream-checkout to refresh fixed-commit dependencies referenced by the current Surge module.",
+    "Review data shape changes reported by generator; rerun tests, rebuild and review the stable/experimental plugin diff before publishing."
+  ],
+  "private_material_not_published": [
+    "Original ZIP captures, signed playback URLs, request headers/cookies, API keys, local translation model/runtime downloads, and computer paths.",
+    "Private raw-capture regression is optional. Sanitized fixtures allow CC decoder work on a fresh clone.",
+    "Capture filenames in the chat: 1039_1795421820216.zip (Fitness+ structure), 1040_1795425733818.zip (missing subtitle requests), 1042_1795426682121.zip (F1 media/CC, no main playlist). Obtain from the user locally only if needed."
+  ],
+  "user_preferences": [
+    "One plugin import. Remote scripts/subtitles may be downloaded by Loon.",
+    "No subtitle bodies or API credentials inside the plugin.",
+    "Keep user GitHub free of Markdown; use this JSON as the development handoff.",
+    "Fitness+ and unlisted F1 replay support must be generic, not restricted to one class/race.",
+    "Do not require the user to break working playback just to collect diagnostics; state what is and is not established by available evidence."
+  ]
+}

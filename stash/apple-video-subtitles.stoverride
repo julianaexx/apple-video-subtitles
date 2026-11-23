@@ -1,0 +1,980 @@
+name: Apple TV 中文字幕
+desc: v261117a；Apple TV F1 和影视中文字幕，使用需开启 MitM 并安装、信任证书；GitHub：rexchen1803
+
+http:
+  mitm:
+    - hls-amt.itunes.apple.com
+    - uts-api.itunes.apple.com
+    - play-cdn.itunes.apple.com
+    - play-edge-cdn.itunes.apple.com
+    - vod-ap-aoc.tv.apple.com
+    - vod-fa-aoc.tv.apple.com
+    - vod-ak-aoc.tv.apple.com
+    - vod-ap-amt.tv.apple.com
+    - vod-fa-amt.tv.apple.com
+    - vod-ak-amt.tv.apple.com
+  url-rewrite:
+    - ^https?:\/\/play-cdn\.itunes\.apple\.com https://play.itunes.apple.com transparent
+    - ^https?:\/\/play-edge-cdn\.itunes\.apple\.com https://play-edge.itunes.apple.com transparent
+  script:
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1995-12-monkeys\/index\.m3u8\?rev=nov1103-af0ce1150f0c&src=.+$'
+      name: movie-1995-12-monkeys-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1995-12-monkeys\/index\.m3u8\?rev=nov1103-af0ce1150f0c&src=.+$'
+      name: movie-1995-12-monkeys-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1995-12-monkeys\/full\.webvtt\?rev=nov1103-af0ce1150f0c&src=.+$'
+      name: movie-1995-12-monkeys-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1993-dave\/index\.m3u8\?rev=nov1103-e0c60e7390f7&src=.+$'
+      name: movie-1993-dave-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1993-dave\/index\.m3u8\?rev=nov1103-e0c60e7390f7&src=.+$'
+      name: movie-1993-dave-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1993-dave\/full\.webvtt\?rev=nov1103-e0c60e7390f7&src=.+$'
+      name: movie-1993-dave-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2014-interstellar\/index\.m3u8\?rev=nov1103-6fc55b7e640e&src=.+$'
+      name: movie-2014-interstellar-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2014-interstellar\/index\.m3u8\?rev=nov1103-6fc55b7e640e&src=.+$'
+      name: movie-2014-interstellar-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2014-interstellar\/full\.webvtt\?rev=nov1103-6fc55b7e640e&src=.+$'
+      name: movie-2014-interstellar-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1994-pulp-fiction\/index\.m3u8\?rev=nov1103-8fd5be969c2b&src=.+$'
+      name: movie-1994-pulp-fiction-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1994-pulp-fiction\/index\.m3u8\?rev=nov1103-8fd5be969c2b&src=.+$'
+      name: movie-1994-pulp-fiction-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1994-pulp-fiction\/full\.webvtt\?rev=nov1103-8fd5be969c2b&src=.+$'
+      name: movie-1994-pulp-fiction-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1994-forrest-gump\/index\.m3u8\?rev=nov1103-f8230d9bb2f5&src=.+$'
+      name: movie-1994-forrest-gump-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1994-forrest-gump\/index\.m3u8\?rev=nov1103-f8230d9bb2f5&src=.+$'
+      name: movie-1994-forrest-gump-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1994-forrest-gump\/full\.webvtt\?rev=nov1103-f8230d9bb2f5&src=.+$'
+      name: movie-1994-forrest-gump-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2016-the-nice-guys\/index\.m3u8\?rev=nov1103-88e1f9dbab3b&src=.+$'
+      name: movie-2016-the-nice-guys-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2016-the-nice-guys\/index\.m3u8\?rev=nov1103-88e1f9dbab3b&src=.+$'
+      name: movie-2016-the-nice-guys-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2016-the-nice-guys\/full\.webvtt\?rev=nov1103-88e1f9dbab3b&src=.+$'
+      name: movie-2016-the-nice-guys-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2002-minority-report\/index\.m3u8\?rev=nov1103-69640299476e&src=.+$'
+      name: movie-2002-minority-report-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2002-minority-report\/index\.m3u8\?rev=nov1103-69640299476e&src=.+$'
+      name: movie-2002-minority-report-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2002-minority-report\/full\.webvtt\?rev=nov1103-69640299476e&src=.+$'
+      name: movie-2002-minority-report-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1995-bad-boys\/index\.m3u8\?rev=nov1103-6ef1d79f94db&src=.+$'
+      name: movie-1995-bad-boys-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1995-bad-boys\/index\.m3u8\?rev=nov1103-6ef1d79f94db&src=.+$'
+      name: movie-1995-bad-boys-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1995-bad-boys\/full\.webvtt\?rev=nov1103-6ef1d79f94db&src=.+$'
+      name: movie-1995-bad-boys-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2013-prisoners\/index\.m3u8\?rev=nov1103-6daa17ad6475&src=.+$'
+      name: movie-2013-prisoners-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2013-prisoners\/index\.m3u8\?rev=nov1103-6daa17ad6475&src=.+$'
+      name: movie-2013-prisoners-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2013-prisoners\/full\.webvtt\?rev=nov1103-6daa17ad6475&src=.+$'
+      name: movie-2013-prisoners-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2008-rachel-getting-married\/index\.m3u8\?rev=nov1103-cedd5982069e&src=.+$'
+      name: movie-2008-rachel-getting-married-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2008-rachel-getting-married\/index\.m3u8\?rev=nov1103-cedd5982069e&src=.+$'
+      name: movie-2008-rachel-getting-married-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2008-rachel-getting-married\/full\.webvtt\?rev=nov1103-cedd5982069e&src=.+$'
+      name: movie-2008-rachel-getting-married-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1989-dead-poets-society\/index\.m3u8\?rev=nov1103-74a882e2b88d&src=.+$'
+      name: movie-1989-dead-poets-society-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1989-dead-poets-society\/index\.m3u8\?rev=nov1103-74a882e2b88d&src=.+$'
+      name: movie-1989-dead-poets-society-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1989-dead-poets-society\/full\.webvtt\?rev=nov1103-74a882e2b88d&src=.+$'
+      name: movie-1989-dead-poets-society-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2008-get-smart\/index\.m3u8\?rev=nov1103-247c33b4a2e1&src=.+$'
+      name: movie-2008-get-smart-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2008-get-smart\/index\.m3u8\?rev=nov1103-247c33b4a2e1&src=.+$'
+      name: movie-2008-get-smart-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2008-get-smart\/full\.webvtt\?rev=nov1103-247c33b4a2e1&src=.+$'
+      name: movie-2008-get-smart-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2006-talladega-nights\/index\.m3u8\?rev=nov1103-2bcdd526499b&src=.+$'
+      name: movie-2006-talladega-nights-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2006-talladega-nights\/index\.m3u8\?rev=nov1103-2bcdd526499b&src=.+$'
+      name: movie-2006-talladega-nights-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2006-talladega-nights\/full\.webvtt\?rev=nov1103-2bcdd526499b&src=.+$'
+      name: movie-2006-talladega-nights-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2009-julie-and-julia\/index\.m3u8\?rev=nov1103-4727ffd19d96&src=.+$'
+      name: movie-2009-julie-and-julia-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2009-julie-and-julia\/index\.m3u8\?rev=nov1103-4727ffd19d96&src=.+$'
+      name: movie-2009-julie-and-julia-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2009-julie-and-julia\/full\.webvtt\?rev=nov1103-4727ffd19d96&src=.+$'
+      name: movie-2009-julie-and-julia-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1988-big\/index\.m3u8\?rev=nov1103-7376a389d1f6&src=.+$'
+      name: movie-1988-big-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1988-big\/index\.m3u8\?rev=nov1103-7376a389d1f6&src=.+$'
+      name: movie-1988-big-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1988-big\/full\.webvtt\?rev=nov1103-7376a389d1f6&src=.+$'
+      name: movie-1988-big-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/1995-clueless\/index\.m3u8\?rev=nov1103-0b7da4b5ad97&src=.+$'
+      name: movie-1995-clueless-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1995-clueless\/index\.m3u8\?rev=nov1103-0b7da4b5ad97&src=.+$'
+      name: movie-1995-clueless-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/1995-clueless\/full\.webvtt\?rev=nov1103-0b7da4b5ad97&src=.+$'
+      name: movie-1995-clueless-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2004-anchorman\/index\.m3u8\?rev=nov1103-a1bc6bcda5e8&src=.+$'
+      name: movie-2004-anchorman-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2004-anchorman\/index\.m3u8\?rev=nov1103-a1bc6bcda5e8&src=.+$'
+      name: movie-2004-anchorman-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2004-anchorman\/full\.webvtt\?rev=nov1103-a1bc6bcda5e8&src=.+$'
+      name: movie-2004-anchorman-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2010-eat-pray-love\/index\.m3u8\?rev=nov1103-0a760bc619f6&src=.+$'
+      name: movie-2010-eat-pray-love-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2010-eat-pray-love\/index\.m3u8\?rev=nov1103-0a760bc619f6&src=.+$'
+      name: movie-2010-eat-pray-love-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2010-eat-pray-love\/full\.webvtt\?rev=nov1103-0a760bc619f6&src=.+$'
+      name: movie-2010-eat-pray-love-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_master\/2008-body-of-lies\/index\.m3u8\?rev=nov1103-2e1ab7dbca31&src=.+$'
+      name: movie-2008-body-of-lies-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2008-body-of-lies\/index\.m3u8\?rev=nov1103-2e1ab7dbca31&src=.+$'
+      name: movie-2008-body-of-lies-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__apple_movie_zh\/2008-body-of-lies\/full\.webvtt\?rev=nov1103-2e1ab7dbca31&src=.+$'
+      name: movie-2008-body-of-lies-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https?:\/\/uts-api\.itunes\.apple\.com\/uts\/(?:v1|v2|v3)\/'
+      name: apple-tv-playback-host-workaround
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_master\/(?:australia|china|japan|miami|canada|monaco|barcelona-catalunya|austria|great-britain|belgium|hungary|netherlands|spain|azerbaijan|bahrain-malaysia|singapore)\/index\.m3u8(?:\?.*)?$'
+      name: f1-replay-track-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/(?:australia|china|japan|miami|canada|monaco|barcelona-catalunya|austria|great-britain|belgium|hungary|netherlands|spain|azerbaijan|bahrain-malaysia|singapore)\/index\.m3u8(?:\?.*)?$'
+      name: f1-replay-track-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https?:\/\/hls-amt\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/(?:[^\/]+\/)+(?:P1337486392_A1881724926|P1337522687_A1881777941|P1326620577_A1881763666|P1364568578_A1881733891|P1392837560_A1881753363|P1411825097_A1881742204|P1413846083_A1881690171|P1429344944_A1882150267|P1436852938_A1881739464|P1457248952_A1881786635)_es_subtitles_V2-\d+\.webvtt(?:\?.*)?$'
+      name: f1-race-commentary-fan-zh
+      type: response
+      require-body: true
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e01/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e01-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e01/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e01-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e01/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e01-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e02/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e02-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e02/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e02-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e02/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e02-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e03/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e03-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e03/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e03-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e03/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e03-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e04/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e04-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e04/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e04-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e04/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e04-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e05/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e05-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e05/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e05-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e05/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e05-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e06/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e06-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e06/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e06-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e06/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e06-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e07/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e07-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e07/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e07-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e07/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e07-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_master/dts-s08e08/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e08-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e08/index.m3u8(?:\?.*)?$'
+      name: series-dts-s08e08-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https://hls-amt.itunes.apple.com/__apple_series_zh/dts-s08e08/seg-\d+.webvtt(?:\?.*)?$'
+      name: series-dts-s08e08-vtt
+      type: request
+      require-body: false
+      timeout: 30
+
+    - match: '^https:\/\/play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com\/WebObjects\/MZPlayLocal\.woa\/hls\/subscription\/playlist\.m3u8\?(?=[^#]*(?:mainAssetAdamId=6793693246|a=[^#]*6793693246))[^#]*$'
+      name: movie-arrival-manifest
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com\/WebObjects\/MZPlayLocal\.woa\/hls\/subscription\/stream\/playlist\.m3u8\?(?=[^#]*(?:mainAssetAdamId=6793693246|a=[^#]*6793693246))(?=[^#]*arrivalzh=1)[^#]*$'
+      name: movie-arrival-playlist
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/vod-(?:ap|fa|ak)-aoc\.tv\.apple\.com\/itunes-assets\/(?:[^\/]+\/)+P1467244084_A6793693246_es-419_subtitles_V2-\.webvtt\?(?=[^#]*arrivalzh=1)[^#]*$'
+      name: movie-arrival-vtt
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com\/WebObjects\/MZPlayLocal\.woa\/hls\/subscription\/playlist\.m3u8\?(?=[^#]*(?:mainAssetAdamId=6804923769|a=[^#]*6804923769))[^#]*$'
+      name: movie-master-and-commander-manifest
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com\/WebObjects\/MZPlayLocal\.woa\/hls\/subscription\/stream\/playlist\.m3u8\?(?=[^#]*(?:mainAssetAdamId=6804923769|a=[^#]*6804923769))(?=[^#]*m1504zhp1=1)[^#]*$'
+      name: movie-master-and-commander-playlist
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/vod-(?:ap|fa|ak)-aoc\.tv\.apple\.com\/itunes-assets\/(?:[^\/]+\/)+[^\/?#]*_A6804923769_[^\/?#]*\.webvtt\?(?=[^#]*m1504zhp1=1)[^#]*$'
+      name: movie-master-and-commander-vtt
+      type: response
+      require-body: true
+      timeout: 30
+      max-size: 2097152
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_mx_live_preview\/master\.m3u8(?:\?.*)?$'
+      name: f1-preview-mx-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_mx_live_preview\/zh-Hans\/index\.m3u8(?:\?.*)?$'
+      name: f1-preview-mx-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_mx_live_preview\/zh-Hans\/seg-\d{3}\.vtt(?:\?.*)?$'
+      name: f1-preview-mx-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/australia\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-australia-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/china\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-china-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/japan\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-japan-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/miami\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-miami-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/canada\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-canada-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/monaco\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-monaco-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/barcelona-catalunya\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-barcelona-catalunya-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/austria\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-austria-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/great-britain\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-great-britain-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/belgium\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-belgium-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/hungary\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-hungary-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/netherlands\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-netherlands-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/spain\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-spain-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/azerbaijan\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-azerbaijan-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/bahrain-malaysia\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-bahrain-malaysia-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh\/singapore\/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-singapore-isolated-zh
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_master/united-states/index\.m3u8(?:\?.*)?$'
+      name: f1-replay-us-formal-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh/united-states/index\.m3u8(?:\?.*)?$'
+      name: f1-replay-us-formal-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh/united-states/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-replay-us-formal-vtt
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_sp_live_preview\/master\.m3u8(?:\?.*)?$'
+      name: F1.Preview.SP.Master.request
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_sp_live_preview\/zh\/index\.m3u8(?:\?.*)?$'
+      name: F1.Preview.SP.Playlist.request
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_sp_live_preview\/zh\/seg-\d{3}\.vtt(?:\?.*)?$'
+      name: F1.Preview.SP.VTT.request
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_master/mexico/index\.m3u8(?:\?.*)?$'
+      name: f1-replay-mx-formal-master
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh/mexico/index\.m3u8(?:\?.*)?$'
+      name: f1-replay-mx-formal-playlist
+      type: request
+      require-body: false
+      timeout: 30
+    - match: '^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_zh/mexico/seg-\d{3}\.webvtt(?:\?.*)?$'
+      name: f1-replay-mx-formal-vtt
+      type: request
+      require-body: false
+      timeout: 30
+
+script-providers:
+  apple-tv-playback-host-workaround:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/uts-redirect.js
+    interval: 86400
+  f1-replay-track-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/runtime/f1/replay_track_master.js
+    interval: 86400
+  f1-replay-track-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/runtime/f1/replay_track_playlist.js
+    interval: 86400
+  f1-race-commentary-fan-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/f1/2026/2026-f1-race-commentary-fan-zh.js
+    interval: 86400
+  series-dts-s08e01-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e01.js
+    interval: 86400
+  series-dts-s08e01-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e01.js
+    interval: 86400
+  series-dts-s08e01-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e01.js
+    interval: 86400
+  series-dts-s08e02-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e02.js
+    interval: 86400
+  series-dts-s08e02-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e02.js
+    interval: 86400
+  series-dts-s08e02-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e02.js
+    interval: 86400
+  series-dts-s08e03-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e03.js
+    interval: 86400
+  series-dts-s08e03-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e03.js
+    interval: 86400
+  series-dts-s08e03-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e03.js
+    interval: 86400
+  series-dts-s08e04-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e04.js
+    interval: 86400
+  series-dts-s08e04-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e04.js
+    interval: 86400
+  series-dts-s08e04-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e04.js
+    interval: 86400
+  series-dts-s08e05-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e05.js
+    interval: 86400
+  series-dts-s08e05-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e05.js
+    interval: 86400
+  series-dts-s08e05-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e05.js
+    interval: 86400
+  series-dts-s08e06-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e06.js
+    interval: 86400
+  series-dts-s08e06-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e06.js
+    interval: 86400
+  series-dts-s08e06-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e06.js
+    interval: 86400
+  series-dts-s08e07-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e07.js
+    interval: 86400
+  series-dts-s08e07-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e07.js
+    interval: 86400
+  series-dts-s08e07-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e07.js
+    interval: 86400
+  series-dts-s08e08-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/master-dts-s08e08.js
+    interval: 86400
+  series-dts-s08e08-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e08.js
+    interval: 86400
+  series-dts-s08e08-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e08.js
+    interval: 86400
+  movie-arrival-manifest:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2016-arrival/inject_arrival_zh_hans_added_track.js
+    interval: 86400
+  movie-arrival-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2016-arrival/rewrite_arrival_added_track_playlist.js
+    interval: 86400
+  movie-arrival-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2016-arrival/serve_arrival_zh_hans_added_track.js
+    interval: 86400
+  movie-master-and-commander-manifest:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/9e7aa43bd9e1a4032d4bc780c353f8f4a6ef31bb/payloads/stash/movies/2003-master-and-commander/inject_master_and_commander_zh_hans_added_track.js
+    interval: 86400
+  movie-master-and-commander-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2003-master-and-commander/rewrite_master_and_commander_added_track_playlist.js
+    interval: 86400
+  movie-master-and-commander-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2003-master-and-commander/serve_master_and_commander_zh_hans_added_track.js
+    interval: 86400
+  movie-1995-12-monkeys-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-12-monkeys/manifest.js
+    interval: 86400
+  movie-1995-12-monkeys-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-12-monkeys/playlist.js
+    interval: 86400
+  movie-1995-12-monkeys-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-12-monkeys/subtitle.js
+    interval: 86400
+  movie-1993-dave-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1993-dave/manifest.js
+    interval: 86400
+  movie-1993-dave-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1993-dave/playlist.js
+    interval: 86400
+  movie-1993-dave-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1993-dave/subtitle.js
+    interval: 86400
+  movie-2014-interstellar-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2014-interstellar/manifest-current.js
+    interval: 86400
+  movie-2014-interstellar-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2014-interstellar/playlist-current.js
+    interval: 86400
+  movie-2014-interstellar-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2014-interstellar/subtitle-current.js
+    interval: 86400
+  movie-1994-pulp-fiction-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1994-pulp-fiction/manifest.js
+    interval: 86400
+  movie-1994-pulp-fiction-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1994-pulp-fiction/playlist.js
+    interval: 86400
+  movie-1994-pulp-fiction-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1994-pulp-fiction/subtitle.js
+    interval: 86400
+  movie-1994-forrest-gump-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1994-forrest-gump/manifest.js
+    interval: 86400
+  movie-1994-forrest-gump-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1994-forrest-gump/playlist.js
+    interval: 86400
+  movie-1994-forrest-gump-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1994-forrest-gump/subtitle.js
+    interval: 86400
+  movie-2016-the-nice-guys-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2016-the-nice-guys/manifest.js
+    interval: 86400
+  movie-2016-the-nice-guys-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2016-the-nice-guys/playlist.js
+    interval: 86400
+  movie-2016-the-nice-guys-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2016-the-nice-guys/subtitle.js
+    interval: 86400
+  movie-2002-minority-report-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2002-minority-report/manifest.js
+    interval: 86400
+  movie-2002-minority-report-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/movies/2002-minority-report/playlist.js
+    interval: 86400
+  movie-2002-minority-report-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/movies/2002-minority-report/subtitle.js
+    interval: 86400
+  movie-1995-bad-boys-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-bad-boys/manifest.js
+    interval: 86400
+  movie-1995-bad-boys-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-bad-boys/playlist.js
+    interval: 86400
+  movie-1995-bad-boys-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-bad-boys/subtitle.js
+    interval: 86400
+  movie-2013-prisoners-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2013-prisoners/manifest.js
+    interval: 86400
+  movie-2013-prisoners-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2013-prisoners/playlist.js
+    interval: 86400
+  movie-2013-prisoners-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2013-prisoners/subtitle.js
+    interval: 86400
+  movie-2008-rachel-getting-married-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-rachel-getting-married/manifest.js
+    interval: 86400
+  movie-2008-rachel-getting-married-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-rachel-getting-married/playlist.js
+    interval: 86400
+  movie-2008-rachel-getting-married-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-rachel-getting-married/subtitle.js
+    interval: 86400
+  movie-1989-dead-poets-society-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1989-dead-poets-society/manifest.js
+    interval: 86400
+  movie-1989-dead-poets-society-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1989-dead-poets-society/playlist.js
+    interval: 86400
+  movie-1989-dead-poets-society-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1989-dead-poets-society/subtitle.js
+    interval: 86400
+  movie-2008-get-smart-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-get-smart/manifest.js
+    interval: 86400
+  movie-2008-get-smart-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-get-smart/playlist.js
+    interval: 86400
+  movie-2008-get-smart-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-get-smart/subtitle.js
+    interval: 86400
+  movie-2006-talladega-nights-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2006-talladega-nights/manifest.js
+    interval: 86400
+  movie-2006-talladega-nights-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2006-talladega-nights/playlist.js
+    interval: 86400
+  movie-2006-talladega-nights-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2006-talladega-nights/subtitle.js
+    interval: 86400
+  movie-2009-julie-and-julia-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2009-julie-and-julia/manifest.js
+    interval: 86400
+  movie-2009-julie-and-julia-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2009-julie-and-julia/playlist.js
+    interval: 86400
+  movie-2009-julie-and-julia-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2009-julie-and-julia/subtitle.js
+    interval: 86400
+  movie-1988-big-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1988-big/manifest.js
+    interval: 86400
+  movie-1988-big-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1988-big/playlist.js
+    interval: 86400
+  movie-1988-big-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1988-big/subtitle.js
+    interval: 86400
+  movie-1995-clueless-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-clueless/manifest.js
+    interval: 86400
+  movie-1995-clueless-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-clueless/playlist.js
+    interval: 86400
+  movie-1995-clueless-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/1995-clueless/subtitle.js
+    interval: 86400
+  movie-2004-anchorman-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2004-anchorman/manifest.js
+    interval: 86400
+  movie-2004-anchorman-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2004-anchorman/playlist.js
+    interval: 86400
+  movie-2004-anchorman-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2004-anchorman/subtitle.js
+    interval: 86400
+  movie-2010-eat-pray-love-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2010-eat-pray-love/manifest.js
+    interval: 86400
+  movie-2010-eat-pray-love-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2010-eat-pray-love/playlist.js
+    interval: 86400
+  movie-2010-eat-pray-love-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2010-eat-pray-love/subtitle.js
+    interval: 86400
+  movie-2008-body-of-lies-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-body-of-lies/manifest.js
+    interval: 86400
+  movie-2008-body-of-lies-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-body-of-lies/playlist.js
+    interval: 86400
+  movie-2008-body-of-lies-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/a040b1ddf317c10b5bcba97e708bce68b1d2eca7/payloads/stash/movies/2008-body-of-lies/subtitle.js
+    interval: 86400
+  f1-preview-mx-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/08afb047c1fd259451cac81920d9d9a6fe7792ce/payloads/stash/f1/previews/2026/19-mexico/master.js
+    interval: 86400
+  f1-preview-mx-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/08afb047c1fd259451cac81920d9d9a6fe7792ce/payloads/stash/f1/previews/2026/19-mexico/playlist.js
+    interval: 86400
+  f1-preview-mx-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/08afb047c1fd259451cac81920d9d9a6fe7792ce/payloads/stash/f1/previews/2026/19-mexico/vtt.js
+    interval: 86400
+  f1-australia-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/01-australia-isolated.js
+    interval: 86400
+  f1-china-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/02-china-isolated.js
+    interval: 86400
+  f1-japan-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/03-japan-isolated.js
+    interval: 86400
+  f1-miami-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/04-miami-isolated.js
+    interval: 86400
+  f1-canada-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/05-canada-isolated.js
+    interval: 86400
+  f1-monaco-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/06-monaco-isolated.js
+    interval: 86400
+  f1-barcelona-catalunya-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/07-barcelona-catalunya-isolated.js
+    interval: 86400
+  f1-austria-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/08-austria-isolated.js
+    interval: 86400
+  f1-great-britain-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/09-great-britain-isolated.js
+    interval: 86400
+  f1-belgium-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/10-belgium-isolated.js
+    interval: 86400
+  f1-hungary-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/11-hungary-isolated.js
+    interval: 86400
+  f1-netherlands-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/12-netherlands-isolated.js
+    interval: 86400
+  f1-spain-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/13-spain-isolated.js
+    interval: 86400
+  f1-azerbaijan-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/15-azerbaijan-isolated.js
+    interval: 86400
+  f1-bahrain-malaysia-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/16-bahrain-malaysia-isolated.js
+    interval: 86400
+  f1-singapore-isolated-zh:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/5d999c2b8c5fb0775e3383519bd5c17dafe6fc2b/payloads/stash/f1/2026/17-singapore-isolated.js
+    interval: 86400
+  f1-replay-us-formal-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/runtime/f1/replay_track_master.js
+    interval: 86400
+  f1-replay-us-formal-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/runtime/f1/replay_track_playlist.js
+    interval: 86400
+  f1-replay-us-formal-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b958fddafa4d75c1534d9e0bb85151c02461c418/payloads/stash/f1/2026/18-united-states-isolated.js
+    interval: 86400
+  F1.Preview.SP.Master.request:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/63c5b25275144f3a3701add3c830c18882ffd4c2/payloads/stash/f1/previews/2026/20-sao-paulo/master.js
+    interval: 86400
+  F1.Preview.SP.Playlist.request:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/63c5b25275144f3a3701add3c830c18882ffd4c2/payloads/stash/f1/previews/2026/20-sao-paulo/playlist.js
+    interval: 86400
+  F1.Preview.SP.VTT.request:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/63c5b25275144f3a3701add3c830c18882ffd4c2/payloads/stash/f1/previews/2026/20-sao-paulo/vtt.js
+    interval: 86400
+  f1-replay-mx-formal-master:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/runtime/f1/replay_track_master.js
+    interval: 86400
+  f1-replay-mx-formal-playlist:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/runtime/f1/replay_track_playlist.js
+    interval: 86400
+  f1-replay-mx-formal-vtt:
+    url: https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/b14a2fd842d6869ab64e1bd71db6f42319a685f0/payloads/stash/f1/2026/19-mexico-isolated.js
+    interval: 86400
