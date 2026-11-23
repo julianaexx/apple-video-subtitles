@@ -1,18 +1,24 @@
 // Fitness+ HLS WebVTT -> DeepSeek -> Chinese sidecar. No embedded credentials.
 (function () {
   const HOST = 'hls-svod.itunes.apple.com';
-  const BRIDGE = 'https://' + HOST + '/__loon_fitness_deepseek/v1/';
   const API = 'https://api.deepseek.com/chat/completions';
   const CACHE_VERSION = 'fitness-ds-1';
   let finished = false;
+  let deadlineTimer = null;
   const args = typeof $argument === 'object' && $argument ? $argument : {};
   const key = String(args.deepseek_key || '').trim();
   const model = String(args.deepseek_model || 'deepseek-flash').trim();
-  const policy = String(args.fitness_policy || '').trim();
-  const VERSION = '20261123b';
+  const waitSeconds = Math.max(2, Math.min(15, Number(args.deepseek_wait) || 8));
+  const VERSION = '20261123c';
+  const MARKER = '__loon_fitness_zh=1';
+  console.log('Fitness+ DeepSeek ' + VERSION + ': ' + (typeof $response === 'undefined' ? 'legacy redirect' : 'native response'));
 
   function finish(value) {
-    if (!finished) { finished = true; $done(value); }
+    if (!finished) {
+      finished = true;
+      if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+      $done(value);
+    }
   }
   function warn(message) {
     console.log('Fitness+ DeepSeek: ' + message);
@@ -44,7 +50,7 @@
     return pattern.test(name);
   }
   function bridge(source, kind) {
-    return BRIDGE + (kind === 'playlist' ? 'index.m3u8' : 'segment.vtt') + '?src=' + encodeURIComponent(source);
+    return source + (source.includes('?') ? '&' : '?') + MARKER;
   }
   function sourceURL(value) {
     const match = /^https:\/\/hls-svod\.itunes\.apple\.com\/__loon_fitness_deepseek\/v1\/(index\.m3u8|segment\.vtt)\?src=([^&]+)$/.exec(value);
@@ -78,7 +84,7 @@
       if (added.has(identity)) continue;
       added.add(identity);
       let row = '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=' + JSON.stringify(donor['GROUP-ID'])
-        + ',LANGUAGE="zh-Hans",NAME="简体中文（DeepSeek）",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO'
+        + ',LANGUAGE="zh-Hans",NAME="简体中文（DeepSeek）",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO'
         + ',STABLE-RENDITION-ID="fitness-deepseek-zh",URI=' + JSON.stringify(bridge(donor.URI, 'playlist'));
       if (donor['PATHWAY-ID']) row += ',PATHWAY-ID=' + JSON.stringify(donor['PATHWAY-ID']);
       tracks.push(row);
@@ -86,92 +92,13 @@
     lines.splice(1, 0, ...tracks);
     return lines.join('\n');
   }
-  function get(url, callback) {
-    const kind = allowed(url, 'playlist') ? 'playlist' : 'segment';
-    const identity = url.split('?')[0];
-    const cacheKey = 'fitness-source-playlist-' + (hash(identity) % 32);
-    const started = Date.now();
-    const label = identity.slice(identity.lastIndexOf('/') + 1);
-    const isPlaylist = kind === 'playlist';
-    let attempt = 0;
-    function cached() {
-      if (!isPlaylist || url.includes('?')) return null;
-      try {
-        const value = JSON.parse($persistentStore.read(cacheKey) || 'null');
-        if (value && value.url === identity && Date.now() - value.at < 86400000
-            && typeof value.body === 'string' && value.body.startsWith('#EXTM3U')
-            && value.body.includes('#EXT-X-ENDLIST') && !value.body.includes('?')) return value.body;
-      } catch (_) { /* Optional cache. */ }
-      return null;
-    }
-    const previous = cached();
-    if (previous) {
-      console.log('Fitness+ DeepSeek ' + VERSION + ': 英文列表缓存命中 ' + label);
-      callback(previous); return;
-    }
-    function category(error) {
-      const text = String(error || '').toLowerCase();
-      if (/timeout|timed.?out|超时/.test(text)) return 'timeout';
-      if (/ssl|tls|certificate|证书/.test(text)) return 'tls';
-      if (/dns|resolve|host.*found/.test(text)) return 'dns';
-      return error ? 'transport' : 'none';
-    }
-    function failed(error, status, issue) {
-      const reason = 'HTTP=' + status + ' error=' + category(error) + (issue ? ' detail=' + issue : '');
-      console.log('Fitness+ DeepSeek ' + VERSION + ': source=' + label + ' attempt=' + attempt + '/3 '
-        + reason + ' policy=' + (policy ? 'custom' : 'default'));
-      if (attempt < 3 && Date.now() - started < 25000 && ![401, 404, 410].includes(status)) {
-        request(url); return;
-      }
-      warn('英文字幕下载失败：' + reason + '；可在插件参数选择字幕下载策略');
-      send('Subtitle source unavailable', 'text/plain', 502);
-    }
-    function request(target) {
-      attempt++;
-      // Forward only a playback User-Agent/Accept; never Apple cookies or authorization.
-      const headers = { 'Accept-Encoding': 'identity', Accept: '*/*' };
-      for (const name of Object.keys($request.headers || {})) {
-        if (/^(user-agent|accept-language)$/i.test(name)) headers[name] = $request.headers[name];
-      }
-      const options = { url: target, timeout: Math.max(500, Math.min(12000, 26000 - (Date.now() - started))), headers,
-        'auto-cookie': false, 'auto-redirect': false, 'binary-mode': false, insecure: false };
-      if (policy) options.node = policy;
-      try {
-        $httpClient.get(options, (error, response, body) => {
-          if (finished) return;
-          const status = response ? Number(response.status) || 0 : 0;
-          if (error || !response) { failed(error, status, ''); return; }
-          if ([301, 302, 303, 307, 308].includes(status)) {
-            const responseHeaders = response.headers || {};
-            const name = Object.keys(responseHeaders).find(key => key.toLowerCase() === 'location');
-            const location = name && absolute(responseHeaders[name], target);
-            if (attempt < 3 && location && allowed(location, kind)
-                && location.split('?')[0].slice(location.split('?')[0].lastIndexOf('/') + 1) === label
-                && Date.now() - started < 25000) {
-              console.log('Fitness+ DeepSeek ' + VERSION + ': 同 Apple 主机重定向 ' + label);
-              request(location); return;
-            }
-            failed(null, status, 'blocked-redirect'); return;
-          }
-          if (status !== 200) { failed(null, status, ''); return; }
-          if (Object.prototype.toString.call(body) === '[object Uint8Array]' && body.length <= 262144) {
-            try { body = decodeURIComponent(Array.prototype.map.call(body, byte => '%' + byte.toString(16).padStart(2, '0')).join('')); }
-            catch (_) { failed(null, status, 'invalid-encoding'); return; }
-          }
-          if (typeof body !== 'string' || body.length > 262144) { failed(null, status, 'invalid-body'); return; }
-          body = body.replace(/^\ufeff/, '').trimStart();
-          if (!(isPlaylist ? body.startsWith('#EXTM3U') : /^WEBVTT(?:\s|$)/.test(body))) {
-            failed(null, status, 'not-' + kind); return;
-          }
-          if (isPlaylist && !url.includes('?') && body.includes('#EXT-X-ENDLIST') && !body.includes('?') && body.length <= 65536) {
-            try { $persistentStore.write(JSON.stringify({ url: identity, at: Date.now(), body }), cacheKey); } catch (_) { /* Optional. */ }
-          }
-          console.log('Fitness+ DeepSeek ' + VERSION + ': 英文字幕下载成功 ' + label + ' attempt=' + attempt);
-          callback(body);
-        });
-      } catch (error) { failed(error, 0, 'client'); }
-    }
-    request(url);
+  function unmarked(url) {
+    const at = url.indexOf('?');
+    if (at < 0) return null;
+    const fields = url.slice(at + 1).split('&');
+    if (fields.filter(value => value === MARKER).length !== 1) return null;
+    const query = fields.filter(value => value !== MARKER).join('&');
+    return url.slice(0, at) + (query ? '?' + query : '');
   }
   function playlist(body, source) {
     if (!body.startsWith('#EXTM3U') || !body.includes('#EXTINF:')
@@ -206,22 +133,21 @@
     return value >>> 0;
   }
   function translate(body, source) {
-    const type = 'text/vtt; charset=utf-8';
     const parsed = parseVTT(body);
     if (!parsed || body.length > 32768 || parsed.cues.length > 80) {
-      warn('字幕格式或分片大小暂不支持，返回英文'); send(body, type); return;
+      warn('字幕格式或分片大小暂不支持，返回英文'); finish({}); return;
     }
-    if (!parsed.cues.length) { send(body, type); return; }
+    if (!parsed.cues.length) { finish({}); return; }
     const identity = CACHE_VERSION + ':' + model + ':' + source.split('?')[0];
     const slot = 'fitness-ds-cache-' + (hash(identity) % 128);
     try {
       const cached = JSON.parse($persistentStore.read(slot) || 'null');
       if (cached && cached.identity === identity && cached.original === body && typeof cached.translated === 'string') {
-        console.log('Fitness+ DeepSeek: 缓存命中'); send(cached.translated, type); return;
+        console.log('Fitness+ DeepSeek ' + VERSION + ': 缓存命中'); finish({body:cached.translated}); return;
       }
     } catch (_) { /* Cache is optional. */ }
     if (!/^sk-[A-Za-z0-9_-]+$/.test(key)) {
-      warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); send(body, type); return;
+      warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return;
     }
     const texts = parsed.cues.map(row => row.text);
     const request = {
@@ -235,7 +161,11 @@
         { role: 'user', content: JSON.stringify({ subtitles: texts }) },
       ],
     };
-    $httpClient.post({ url: API, timeout: 18000, insecure: false, 'auto-redirect': false, 'auto-cookie': false,
+    deadlineTimer = setTimeout(() => {
+      warn('翻译超过 ' + waitSeconds + ' 秒，放行原英文字幕');
+      finish({});
+    }, waitSeconds * 1000);
+    $httpClient.post({ url: API, timeout: waitSeconds * 1000 - 300, insecure: false, 'auto-redirect': false, 'auto-cookie': false,
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(request) },
     (error, response, text) => {
       if (finished) return;
@@ -243,7 +173,7 @@
         if (error || !response || Number(response.status) !== 200) {
           // Never log API response bodies, credentials, or request headers.
           warn('翻译请求失败（HTTP ' + (response ? Number(response.status) || 0 : 0) + '），返回英文');
-          send(body, type); return;
+          finish({}); return;
         }
         const data = JSON.parse(text), choice = data.choices && data.choices[0];
         if (!choice || choice.finish_reason !== 'stop') throw new Error('incomplete');
@@ -258,9 +188,9 @@
         const result = parsed.blocks.join('\n\n') + '\n\n';
         try { $persistentStore.write(JSON.stringify({ identity, original: body, translated: result }), slot); } catch (_) { /* Optional. */ }
         console.log('Fitness+ DeepSeek: 已翻译 ' + texts.length + ' 条字幕');
-        send(result, type);
+        finish({body:result});
       } catch (_) {
-        warn('翻译结果未通过校验，返回英文'); send(body, type);
+        warn('翻译结果未通过校验，返回英文'); finish({});
       }
     });
   }
@@ -268,23 +198,41 @@
   try {
     if (typeof $response !== 'undefined') {
       if (Number($response.status) !== 200) { finish({}); return; }
-      if (!key) { warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return; }
-      const output = inject($response.body);
-      finish(output ? { body: output } : {});
+      const source = unmarked($request.url);
+      if (source) {
+        if (allowed(source, 'playlist')) {
+          const body = typeof $response.body === 'string' ? $response.body.replace(/^\ufeff/, '').trimStart() : '';
+          const output = playlist(body, source);
+          if (output) {
+            console.log('Fitness+ DeepSeek ' + VERSION + ': 原生字幕列表改写成功');
+            finish({body:output});
+          } else {
+            warn('原生字幕列表格式暂不支持，放行原英文字幕');
+            finish({});
+          }
+        } else if (allowed(source, 'segment') && typeof $response.body === 'string') {
+          console.log('Fitness+ DeepSeek ' + VERSION + ': 原生字幕分片已收到');
+          translate($response.body, source);
+        } else finish({});
+      } else {
+        if (!key) { warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return; }
+        const output = inject($response.body);
+        finish(output ? {body:output} : {});
+      }
     } else {
+      // Compatibility only: old player sessions may still request the synthetic
+      // v1 URLs. Redirect immediately; do not download or retry inside the script.
       const source = sourceURL($request.url);
       if (!source) { send('Not found', 'text/plain', 404); return; }
-      get(source.src, body => {
-        if (source.kind === 'segment') translate(body, source.src);
-        else {
-          const output = playlist(body, source.src);
-          if (output) send(output, 'application/vnd.apple.mpegurl');
-          else { warn('英文字幕列表格式暂不支持'); send('Unsupported subtitle playlist', 'text/plain', 502); }
-        }
-      });
+      console.log('Fitness+ DeepSeek ' + VERSION + ': 旧字幕入口立即回退原地址');
+      finish({response:{status:302,headers:{Location:source.src,'Cache-Control':'no-store'},body:''}});
     }
   } catch (_) {
     if (typeof $response !== 'undefined') finish({});
-    else send('Subtitle processing failed', 'text/plain', 502);
+    else {
+      const source = sourceURL($request.url);
+      if (source) finish({response:{status:302,headers:{Location:source.src},body:''}});
+      else send('Subtitle processing failed', 'text/plain', 502);
+    }
   }
 })();
