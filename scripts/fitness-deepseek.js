@@ -8,6 +8,8 @@
   const args = typeof $argument === 'object' && $argument ? $argument : {};
   const key = String(args.deepseek_key || '').trim();
   const model = String(args.deepseek_model || 'deepseek-flash').trim();
+  const policy = String(args.fitness_policy || '').trim();
+  const VERSION = '20261123b';
 
   function finish(value) {
     if (!finished) { finished = true; $done(value); }
@@ -85,15 +87,91 @@
     return lines.join('\n');
   }
   function get(url, callback) {
-    // Do not forward Apple request headers, account tokens or cookies.
-    $httpClient.get({ url, timeout: 7000, headers: { 'Accept-Encoding': 'identity' },
-      'auto-cookie': false, 'auto-redirect': false, insecure: false }, (error, response, body) => {
-      if (finished) return;
-      if (error || !response || Number(response.status) !== 200 || typeof body !== 'string' || body.length > 262144) {
-        warn('英文字幕下载失败，请检查网络或日志');
-        send('Subtitle source unavailable', 'text/plain', 502);
-      } else callback(body);
-    });
+    const kind = allowed(url, 'playlist') ? 'playlist' : 'segment';
+    const identity = url.split('?')[0];
+    const cacheKey = 'fitness-source-playlist-' + (hash(identity) % 32);
+    const started = Date.now();
+    const label = identity.slice(identity.lastIndexOf('/') + 1);
+    const isPlaylist = kind === 'playlist';
+    let attempt = 0;
+    function cached() {
+      if (!isPlaylist || url.includes('?')) return null;
+      try {
+        const value = JSON.parse($persistentStore.read(cacheKey) || 'null');
+        if (value && value.url === identity && Date.now() - value.at < 86400000
+            && typeof value.body === 'string' && value.body.startsWith('#EXTM3U')
+            && value.body.includes('#EXT-X-ENDLIST') && !value.body.includes('?')) return value.body;
+      } catch (_) { /* Optional cache. */ }
+      return null;
+    }
+    const previous = cached();
+    if (previous) {
+      console.log('Fitness+ DeepSeek ' + VERSION + ': 英文列表缓存命中 ' + label);
+      callback(previous); return;
+    }
+    function category(error) {
+      const text = String(error || '').toLowerCase();
+      if (/timeout|timed.?out|超时/.test(text)) return 'timeout';
+      if (/ssl|tls|certificate|证书/.test(text)) return 'tls';
+      if (/dns|resolve|host.*found/.test(text)) return 'dns';
+      return error ? 'transport' : 'none';
+    }
+    function failed(error, status, issue) {
+      const reason = 'HTTP=' + status + ' error=' + category(error) + (issue ? ' detail=' + issue : '');
+      console.log('Fitness+ DeepSeek ' + VERSION + ': source=' + label + ' attempt=' + attempt + '/3 '
+        + reason + ' policy=' + (policy ? 'custom' : 'default'));
+      if (attempt < 3 && Date.now() - started < 25000 && ![401, 404, 410].includes(status)) {
+        request(url); return;
+      }
+      warn('英文字幕下载失败：' + reason + '；可在插件参数选择字幕下载策略');
+      send('Subtitle source unavailable', 'text/plain', 502);
+    }
+    function request(target) {
+      attempt++;
+      // Forward only a playback User-Agent/Accept; never Apple cookies or authorization.
+      const headers = { 'Accept-Encoding': 'identity', Accept: '*/*' };
+      for (const name of Object.keys($request.headers || {})) {
+        if (/^(user-agent|accept-language)$/i.test(name)) headers[name] = $request.headers[name];
+      }
+      const options = { url: target, timeout: Math.max(500, Math.min(12000, 26000 - (Date.now() - started))), headers,
+        'auto-cookie': false, 'auto-redirect': false, 'binary-mode': false, insecure: false };
+      if (policy) options.node = policy;
+      try {
+        $httpClient.get(options, (error, response, body) => {
+          if (finished) return;
+          const status = response ? Number(response.status) || 0 : 0;
+          if (error || !response) { failed(error, status, ''); return; }
+          if ([301, 302, 303, 307, 308].includes(status)) {
+            const responseHeaders = response.headers || {};
+            const name = Object.keys(responseHeaders).find(key => key.toLowerCase() === 'location');
+            const location = name && absolute(responseHeaders[name], target);
+            if (attempt < 3 && location && allowed(location, kind)
+                && location.split('?')[0].slice(location.split('?')[0].lastIndexOf('/') + 1) === label
+                && Date.now() - started < 25000) {
+              console.log('Fitness+ DeepSeek ' + VERSION + ': 同 Apple 主机重定向 ' + label);
+              request(location); return;
+            }
+            failed(null, status, 'blocked-redirect'); return;
+          }
+          if (status !== 200) { failed(null, status, ''); return; }
+          if (Object.prototype.toString.call(body) === '[object Uint8Array]' && body.length <= 262144) {
+            try { body = decodeURIComponent(Array.prototype.map.call(body, byte => '%' + byte.toString(16).padStart(2, '0')).join('')); }
+            catch (_) { failed(null, status, 'invalid-encoding'); return; }
+          }
+          if (typeof body !== 'string' || body.length > 262144) { failed(null, status, 'invalid-body'); return; }
+          body = body.replace(/^\ufeff/, '').trimStart();
+          if (!(isPlaylist ? body.startsWith('#EXTM3U') : /^WEBVTT(?:\s|$)/.test(body))) {
+            failed(null, status, 'not-' + kind); return;
+          }
+          if (isPlaylist && !url.includes('?') && body.includes('#EXT-X-ENDLIST') && !body.includes('?') && body.length <= 65536) {
+            try { $persistentStore.write(JSON.stringify({ url: identity, at: Date.now(), body }), cacheKey); } catch (_) { /* Optional. */ }
+          }
+          console.log('Fitness+ DeepSeek ' + VERSION + ': 英文字幕下载成功 ' + label + ' attempt=' + attempt);
+          callback(body);
+        });
+      } catch (error) { failed(error, 0, 'client'); }
+    }
+    request(url);
   }
   function playlist(body, source) {
     if (!body.startsWith('#EXTM3U') || !body.includes('#EXTINF:')
