@@ -9,7 +9,7 @@
   const key = String(args.deepseek_key || '').trim();
   const model = String(args.deepseek_model || 'deepseek-flash').trim();
   const waitSeconds = Math.max(2, Math.min(15, Number(args.deepseek_wait) || 8));
-  const VERSION = '20261123c';
+  const VERSION = '20261123d';
   const MARKER = '__loon_fitness_zh=1';
   console.log('Fitness+ DeepSeek ' + VERSION + ': ' + (typeof $response === 'undefined' ? 'legacy redirect' : 'native response'));
 
@@ -70,7 +70,7 @@
   function inject(body) {
     if (typeof body !== 'string' || !body.startsWith('#EXTM3U') || !body.includes('#EXT-X-STREAM-INF:')) return null;
     const lines = body.replace(/\r/g, '').split('\n');
-    const media = lines.filter(line => line.startsWith('#EXT-X-MEDIA:')).map(attrs);
+    const media = lines.filter(line => line.startsWith('#EXT-X-MEDIA:')).map(line => ({...attrs(line), line}));
     if (media.some(track => track.TYPE === 'SUBTITLES' && /^zh(?:-|$)/i.test(track.LANGUAGE || ''))) return null;
     const variants = lines.filter(line => line.startsWith('#EXT-X-STREAM-INF:')).map(attrs);
     if (variants.some(row => !row.SUBTITLES)) return null;
@@ -83,13 +83,25 @@
       const identity = JSON.stringify([donor['GROUP-ID'], donor['PATHWAY-ID']]);
       if (added.has(identity)) continue;
       added.add(identity);
-      let row = '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=' + JSON.stringify(donor['GROUP-ID'])
-        + ',LANGUAGE="zh-Hans",NAME="简体中文（DeepSeek）",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO'
-        + ',STABLE-RENDITION-ID="fitness-deepseek-zh",URI=' + JSON.stringify(bridge(donor.URI, 'playlist'));
-      if (donor['PATHWAY-ID']) row += ',PATHWAY-ID=' + JSON.stringify(donor['PATHWAY-ID']);
+      // Preserve Apple's accessibility and pathway metadata. Fitness+ may choose
+      // subtitle renditions through iOS caption preferences rather than TV UI.
+      function set(row, name, value, quoted) {
+        const expression = new RegExp('(^|,)' + name + '=(?:"[^"]*"|[^,]*)');
+        const rendered = name + '=' + (quoted ? JSON.stringify(value) : value);
+        return expression.test(row) ? row.replace(expression, (_, comma) => comma + rendered) : row + ',' + rendered;
+      }
+      let row = donor.line;
+      row = set(row, 'LANGUAGE', 'zh-Hans', true);
+      row = set(row, 'NAME', '简体中文（DeepSeek）', true);
+      row = set(row, 'AUTOSELECT', 'YES', false);
+      row = set(row, 'DEFAULT', 'NO', false);
+      row = set(row, 'FORCED', 'NO', false);
+      row = set(row, 'STABLE-RENDITION-ID', 'fitness-deepseek-zh-' + hash(donor.URI), true);
+      row = set(row, 'URI', bridge(donor.URI, 'playlist'), true);
       tracks.push(row);
     }
     lines.splice(1, 0, ...tracks);
+    console.log('Fitness+ DeepSeek ' + VERSION + ': 已注入 ' + tracks.length + ' 条中文轨，AUTOSELECT=YES，保留辅助字幕属性');
     return lines.join('\n');
   }
   function unmarked(url) {
