@@ -2,3 +2,4 @@
 *.m3u8 text eol=lf
 *.vtt text eol=lf
 *.md text eol=lf
+*.js text eol=lf
