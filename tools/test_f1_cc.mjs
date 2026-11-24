@@ -147,6 +147,38 @@ vm.runInNewContext(pinnedSource('35b5421e5efa54ff5d0617bcebec57eed325158a',
   URL,$response:{body:JSON.stringify(staticInput)},$done:value=>expectedStatic=JSON.parse(value.body),
 });
 const uts='https://uts-api.itunes.apple.com/uts/v3/sporting-events/generic';
+// Sanitized fields from the Las Vegas Race in 30 capture. Condensed VOD must
+// keep its current signed Apple URL instead of entering the CatchUp CC bridge.
+const condensedURL='https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?cc=US&svcId=tvs.vds.241305&a=6837919154&t=fresh-test-token&id=1560312730';
+const condensedPlayable={
+  canonicalMetadata:{leagueShortName:'F1',shortTitle:'Las Vegas: Race in 30'},
+  airingType:'OnDemand',type:'Vod',recapType:'Condensed',duration:1800,
+  assets:{hlsUrl:condensedURL,fpsKeyServerUrl:keyServer,
+    fpsKeyServerQueryParameters:{adamId:'6837919154',svcId:'tvs.vds.241305'}},
+};
+const registrationsBefore=[...store.keys()].filter(key=>key.startsWith('f1cc-event-'));
+for(const playable of [
+  condensedPlayable,
+  {...condensedPlayable,canonicalMetadata:{leagueShortName:'F1'}},
+  {...condensedPlayable,recapType:undefined},
+  {...condensedPlayable,recapType:undefined,canonicalMetadata:{leagueShortName:'F1'},title:'Race in 30'},
+]){
+  assert.deepEqual(run(uts,JSON.stringify({data:{playables:[playable]}})),{},
+    'Race in 30 must preserve the signed native playback URL and FairPlay fields');
+}
+assert.deepEqual([...store.keys()].filter(key=>key.startsWith('f1cc-event-')),registrationsBefore,
+  'condensed VOD must not register an experimental playback entry');
+const mixedInput={data:{items:[
+  {leagueShortName:'F1',feedName:'Race in 30',playables:[{
+    ...condensedPlayable,recapType:undefined,canonicalMetadata:{leagueShortName:'F1'},
+  }]},
+  {playables:metadata.data.playables},
+]}};
+const mixedOutput=JSON.parse(run(uts,JSON.stringify(mixedInput)).body);
+assert.deepEqual(mixedOutput.data.items[0],JSON.parse(JSON.stringify(mixedInput.data.items[0])),
+  'inherited condensed metadata must preserve the entire playable');
+assert.ok(mixedOutput.data.items[1].playables[0].assets.hlsUrl.includes('/__loon_f1_cc/'),
+  'a condensed item must not disable supported replay siblings');
 assert.deepEqual(JSON.parse(run(uts,JSON.stringify(staticInput),{key:''}).body),expectedStatic,
   'all static movies, series, previews and replays must match the pinned upstream routing');
 const registeredStatic={canonicalMetadata:{leagueShortName:'F1'},airingType:'OnDemand',assets:{

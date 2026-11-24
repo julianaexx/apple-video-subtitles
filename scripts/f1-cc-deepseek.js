@@ -335,7 +335,7 @@ const F1Captions = (function () {
 
 // Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261124g', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261124i', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
@@ -400,22 +400,28 @@ const F1Captions = (function () {
     }catch(_){return null;}
   }
   function registerUTS(body){
-    let changed=0;
-    function walk(node,inherited){
+    let changed=0,skipped=0;
+    function walk(node,inherited,condensed){
       if(!node||typeof node!=='object')return;
       const meta=node.canonicalMetadata||{};
       const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1';
+      // Condensed VOD is not a verified CatchUp CC source. Keep Apple's signed
+      // playback URL intact; a bridge followed by a 302 can prevent startup.
+      condensed=condensed||/^condensed$/i.test(node.recapType||'')
+        ||[node.title,node.shortTitle,node.feedName,meta.title,meta.shortTitle]
+          .some(value=>typeof value==='string'&&/\brace\s+in\s+30\b/i.test(value));
       if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){
         const source=node.assets.hlsUrl,key=identity(source);
+        if(condensed)skipped++;
         // Keep FairPlay certificate, nonce and license URLs exactly as Apple sent them.
-        if(key&&masterSource(source)&&service.ready){
+        if(!condensed&&key&&masterSource(source)&&service.ready){
           const token=hash(key);
           if(write('event-'+token,{identity:key,source,at:Date.now()})){
             node.assets.hlsUrl=resource(token,'master.m3u8');changed++;
           }
         }
       }
-      for(const key of Object.keys(node))walk(node[key],f1);
+      for(const key of Object.keys(node))walk(node[key],f1,condensed);
     }
     const data=JSON.parse(body);
     function staticWalk(node){
@@ -427,7 +433,8 @@ const F1Captions = (function () {
         }else staticWalk(node[key]);
       }
     }
-    staticWalk(data);walk(data,false);
+    staticWalk(data);walk(data,false,false);
+    if(skipped)log('精简版保留原生播放 '+skipped+' 项');
     log('静态字幕/F1 回放路由 '+changed+' 项，许可证地址不改写');
     return changed?JSON.stringify(data):null;
   }
