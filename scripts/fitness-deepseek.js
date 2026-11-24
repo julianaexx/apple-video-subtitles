@@ -1,14 +1,14 @@
-// Fitness+ native English WebVTT -> DeepSeek -> bilingual cues. No embedded credentials.
+// Fitness+ native English WebVTT -> DeepSeek -> Chinese-only cues. No embedded credentials.
 (function () {
   const API = 'https://api.deepseek.com/chat/completions';
-  const CACHE_VERSION = 'fitness-ds-bilingual-2';
+  const CACHE_VERSION = 'fitness-ds-zh-only-3';
   let finished = false;
   let deadlineTimer = null;
   const args = typeof $argument === 'object' && $argument ? $argument : {};
   const key = String(args.deepseek_key || '').trim();
   const model = String(args.deepseek_model || 'deepseek-flash').trim();
   const waitSeconds = Math.max(2, Math.min(15, Number(args.deepseek_wait) || 8));
-  const VERSION = '20261124a';
+  const VERSION = '20261124e';
   console.log('Fitness+ DeepSeek ' + VERSION + ': ' + (typeof $response === 'undefined' ? 'legacy redirect' : 'native response'));
 
   function finish(value) {
@@ -118,7 +118,7 @@
               || value.length > 2048 || /\r|\n\s*\n/.test(value))
             || !translated.some(value => /[\u3400-\u9fff]/.test(value))) throw new Error('invalid');
         for (let i = 0; i < parsed.cues.length; i++) {
-          const cue = parsed.cues[i]; parsed.blocks[cue.index] = cue.prefix + '\n' + translated[i].trim() + '\n' + cue.text;
+          const cue = parsed.cues[i]; parsed.blocks[cue.index] = cue.prefix + '\n' + translated[i].trim();
         }
         const result = parsed.blocks.join('\n\n') + '\n\n';
         try { $persistentStore.write(JSON.stringify({ identity, original: body, translated: result }), slot); } catch (_) { /* Optional. */ }

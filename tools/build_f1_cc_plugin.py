@@ -54,8 +54,8 @@ def build(base, script_url):
     hosts = lines[index].partition(' = ')[2].split(', ')
     if set(hosts) & {'play.itunes.apple.com', 'play-edge.itunes.apple.com', 'linear.tv.apple.com'}:
         raise ValueError('shared playback/license hosts must not be intercepted')
-    lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ 双语 + F1 AI 实验'
-    lines[1] = '#!desc=20261124d；F1 编号译文映射与逐句补译，修复条数不匹配回退；Fitness+ 选择英文显示双语；保持 Music 兼容'
+    lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ 中文 + F1 AI 实验'
+    lines[1] = '#!desc=20261124e；Fitness+ 选择英文字幕仅显示中文，刷新旧双语缓存；保留 F1 逐句补译；保持 Music 兼容'
     return '\n'.join(lines) + '\n'
 
 
