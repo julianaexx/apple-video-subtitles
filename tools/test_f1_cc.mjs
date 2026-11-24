@@ -23,8 +23,9 @@ assert.ok(library.cc.webvtt(data,decoded.cues).includes('00:00:00.000 --> 00:00:
 assert.throws(()=>library.cc.extract(binary.slice(0,-2)));
 
 const store=new Map(),calls=[];
-function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false,f1Wait,apiDelay=0,apiResponses=[],throwAPI=false,onPost=null}={}){
+function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false,f1Wait,apiDelay=0,apiResponses=[],throwAPI=false,onPost=null,deferSingles=false}={}){
   const results=[],timers=new Map();let at=0,late=null,latePost=null,posts=0,clockNow=Date.now();
+  const deferred=[];
   vm.runInNewContext(runtime,{
     Date:{now:()=>clockNow},Uint8Array,$request:{url,headers:{'User-Agent':'AppleCoreMedia test',Authorization:'apple-secret',Cookie:'account-secret'}},...(!request?{$response:{status:200,body}}:{}),
     $argument:{deepseek_key:key,deepseek_model:'deepseek-flash',deepseek_wait:8,...(f1Wait===undefined?{}:{f1_wait:f1Wait})},
@@ -39,21 +40,25 @@ function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,
       if(!hangSource)late();
     },post(options,callback){
       calls.push(options);assert.equal(options.url,'https://api.deepseek.com/chat/completions');
-      const texts=JSON.parse(JSON.parse(options.body).messages[1].content).subtitles;
+      const entries=JSON.parse(JSON.parse(options.body).messages[1].content).subtitles;
+      const texts=entries.map(row=>row.text);
+      const indexed=()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:Object.fromEntries(entries.map(row=>[row.id,translation]))})}}]});
       posts++;
       if(onPost)onPost(posts,texts);
       if(throwAPI)throw Error('client unavailable');
       if(apiDelay>options.timeout){clockNow+=options.timeout;callback('timeout',null,null);return;}
       clockNow+=apiDelay;
+      if(deferSingles&&posts>1){deferred.push(()=>callback(null,{status:200},JSON.stringify(indexed())));return;}
       if(apiResponses[posts-1]){callback(null,{status:200},JSON.stringify(apiResponses[posts-1]));return;}
 
-      latePost=()=>callback(null,{status:200},JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:texts.map(()=>translation)})}}]}));
+      latePost=()=>callback(null,{status:200},JSON.stringify(indexed()));
       if(apiHangs)return;
       if(failFirst&&posts===1){callback(null,{status:503},'');return;}
       if(apiMalformed){callback(null,{status:200},'invalid');return;}
-      callback(null,{status:apiFails?apiStatus:200},JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:texts.map(()=>translation)})}}]}));
+      callback(null,{status:apiFails?apiStatus:200},JSON.stringify(indexed()));
     }},
   },{timeout:1000});
+  while(deferred.length){assert.ok(deferred.length<=2,'single-cue recovery concurrency is bounded');deferred.shift()();}
   if(fireDeadline)for(const fn of timers.values())fn();
   if(lateSource)late();
   if(lateApi&&latePost)latePost();
@@ -229,7 +234,7 @@ assert.ok(run(secondURL,null,{request:true,sources:{
 const slotHash=text=>{let value=2166136261;for(let i=0;i<text.length;i++)value=Math.imul(value^text.charCodeAt(i),16777619);return(value>>>0).toString(16);};
 const mixedSource=stream+'Segment(20).m4v';
 store.set('f1cc-segment-'+(parseInt(slotHash(mixedSource),16)%128),JSON.stringify({
-  version:'f1cc-20261124c',url:mixedSource,at:Date.now(),continued:true,
+  version:'f1cc-20261124d',url:mixedSource,at:Date.now(),continued:true,
   body:'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:0\n\n1\n00:00:00.000 --> 00:00:01.000\nHELLO\n\n2\n00:00:01.000 --> 00:00:02.000\nNEW SENTENCE\n\n',
 }));
 const mixedURL=segmentURL.replace(encodeURIComponent('Segment(0).m4v'),encodeURIComponent('Segment(20).m4v'));
@@ -243,7 +248,7 @@ let beforePartial=calls.length;
 const repaired=run(mixedURL,null,{request:true,apiResponses:[reply(['保留这句中文',null]),reply(['补译第二句'])]}).response.body;
 assert.ok(repaired.includes('保留这句中文'));assert.ok(repaired.includes('补译第二句'));
 assert.equal(calls.length-beforePartial,2);
-assert.deepEqual(JSON.parse(JSON.parse(calls.at(-1).body).messages[1].content).subtitles,['NEW SENTENCE']);
+assert.deepEqual(JSON.parse(JSON.parse(calls.at(-1).body).messages[1].content).subtitles,[{id:'c1',text:'NEW SENTENCE'}]);
 clearTranslations();
 const partial=run(mixedURL,null,{request:true,apiResponses:[reply(['保留这句中文',null]),reply([null])]}).response.body;
 assert.ok(partial.includes('保留这句中文'));assert.ok(partial.includes('NEW SENTENCE'));
@@ -280,6 +285,44 @@ const concurrent=run(segmentURL,null,{request:true,apiFails:true,onPost:()=>{
   store.set(concurrentKey,JSON.stringify({model:'deepseek-flash',text:'HELLO',translation:'并行请求的中文'}));
 }}).response.body;
 assert.ok(concurrent.includes('并行请求的中文'),'a failing request rechecks successful concurrent translations before falling back');
+// Reported regression: two cues receive one merged translation. Do not guess
+// which timestamp owns the merged text; recover each requested id independently.
+clearTranslations();
+let beforeMismatch=calls.length;
+const countMismatch=run(mixedURL,null,{request:true,apiResponses:[reply(['合并的译文']),reply(['第一条补译']),reply(['第二条补译'])]}).response.body;
+assert.equal(calls.length-beforeMismatch,3);
+assert.ok(countMismatch.includes('第一条补译'));assert.ok(countMismatch.includes('第二条补译'));
+assert.ok(!countMismatch.includes('合并的译文'));
+assert.deepEqual(JSON.parse(JSON.parse(calls.at(-2).body).messages[1].content).subtitles,[{id:'c0',text:'HELLO'}]);
+assert.deepEqual(JSON.parse(JSON.parse(calls.at(-1).body).messages[1].content).subtitles,[{id:'c1',text:'NEW SENTENCE'}]);
+clearTranslations();
+const reordered=run(mixedURL,null,{request:true,apiResponses:[reply({c1:'第二条正确',c0:'第一条正确',unknown:'未知编号'})]}).response.body;
+assert.ok(reordered.indexOf('第一条正确')<reordered.indexOf('第二条正确'));
+clearTranslations();
+const missingID=run(mixedURL,null,{request:true,apiResponses:[reply({c1:'保留第二条'}),reply({c0:'补齐第一条'})]}).response.body;
+assert.ok(missingID.includes('保留第二条'));assert.ok(missingID.includes('补齐第一条'));
+assert.deepEqual(JSON.parse(JSON.parse(calls.at(-1).body).messages[1].content).subtitles,[{id:'c0',text:'HELLO'}]);
+clearTranslations();
+const duplicateID=run(mixedURL,null,{request:true,apiResponses:[reply([
+  {id:'c0',text:'重复一'},{id:'c0',text:'重复二'},{id:'c1',text:'正确第二条'},
+]),reply({c0:'修复重复编号'})]}).response.body;
+assert.ok(duplicateID.includes('修复重复编号'));assert.ok(duplicateID.includes('正确第二条'));
+assert.ok(!duplicateID.includes('重复一'));assert.ok(!duplicateID.includes('重复二'));
+clearTranslations();
+const concurrentRecovery=run(mixedURL,null,{request:true,apiResponses:[reply([])],deferSingles:true}).response.body;
+assert.ok(!concurrentRecovery.includes('HELLO'));assert.ok(!concurrentRecovery.includes('NEW SENTENCE'));
+clearTranslations();
+const cappedSource=stream+'Segment(21).m4v';
+store.set('f1cc-segment-'+(parseInt(slotHash(cappedSource),16)%128),JSON.stringify({
+  version:'f1cc-20261124d',url:cappedSource,at:Date.now(),continued:true,
+  body:'WEBVTT\n\n'+Array.from({length:8},(_,i)=>i+'\n00:00:00.000 --> 00:00:01.000\nWORD '+i+'\n\n').join(''),
+}));
+const cappedURL=segmentURL.replace(encodeURIComponent('Segment(0).m4v'),encodeURIComponent('Segment(21).m4v'));
+const beforeCap=calls.length;
+const capped=run(cappedURL,null,{request:true,apiResponses:[reply([])],deferSingles:true}).response.body;
+assert.equal(calls.length-beforeCap,7,'one initial batch plus at most six recovery calls');
+assert.ok(capped.includes('WORD 6'));assert.ok(capped.includes('WORD 7'));
+console.log('Numbered F1 recovery passed: reported 2-to-1 mismatch, reordered/missing/duplicate ids, single-cue repair, concurrency and cost caps.');
 console.log('F1 fallback checks passed: partial result salvage, targeted retry, English rejection, fenced JSON, independent wait limits and cache migration.');
 console.log('F1 stability checks passed: cross-fragment wording, prefix coalescing, carry-in repair, bounded retry, late callbacks and partial fallback.');
 console.log('Unified release routing passed: static priority, Music-safe Fitness, CC retries/seeks, API failures and playback fallbacks.');
