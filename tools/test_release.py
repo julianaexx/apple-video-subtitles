@@ -27,7 +27,11 @@ class UnifiedReleaseTests(unittest.TestCase):
         handlers = [line for line in self.plugin.splitlines()
                     if line.startswith('http-response') and 'uts-api' in line]
         self.assertEqual(len(handlers), 1)
+        self.assertIn('f1_wait = input,15,', self.plugin)
+        f1_rules = [line for line in self.plugin.splitlines() if 'tag=F1.CC.' in line]
+        self.assertTrue(all('argument={deepseek_key,deepseek_model,deepseek_wait,f1_wait}' in line for line in f1_rules))
         line = next(line for line in self.plugin.splitlines() if 'tag=Fitness.DeepSeek.VTT,' in line)
+        self.assertNotIn('f1_wait', line)
         pattern = line.split(' ', 2)[1]
         segment = ('https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/a/course/'
                    'P123_A456_en_subtitles_V2-0.webvtt')

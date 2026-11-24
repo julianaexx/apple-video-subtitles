@@ -22,6 +22,8 @@ def build(base, script_url):
     if "tag=F1.CC." in base:
         raise ValueError("already includes the F1 CC experiment")
     lines = base.splitlines()
+    argument_at = lines.index('[Argument]') + 1
+    lines.insert(argument_at, 'f1_wait = input,15,type=number,tag=F1 翻译最长等待秒数,desc=2至15秒；F1 独立等待上限，默认15秒以减少英文回退')
     rewrites = [line for line in lines if line.startswith('^') and ' response-body-json-jq ' in line]
     if len(rewrites) != 1 or not rewrites[0].startswith(r'^https:\/\/uts-api\.itunes\.apple\.com\/uts\/'):
         raise ValueError('expected exactly one static UTS rewrite to replace')
@@ -29,7 +31,7 @@ def build(base, script_url):
     lines = [line.replace("# The UTS rewrite is embedded using Loon's response-body-json-jq action.",
                           '# One UTS response script routes static subtitles before F1 AI.') for line in lines]
     at = lines.index("[Script]") + 1
-    arguments = ',argument={deepseek_key,deepseek_model,deepseek_wait},enable=true'
+    arguments = ',argument={deepseek_key,deepseek_model,deepseek_wait,f1_wait},enable=true'
     linear = r'linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com'
     content = r'\/Content\/HLS_CBC\/CatchUp\/Channel\([^\s]+\/Stream\(\d+\)\/'
     rules = [
@@ -53,7 +55,7 @@ def build(base, script_url):
     if set(hosts) & {'play.itunes.apple.com', 'play-edge.itunes.apple.com', 'linear.tv.apple.com'}:
         raise ValueError('shared playback/license hosts must not be intercepted')
     lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ 双语 + F1 AI 实验'
-    lines[1] = '#!desc=20261124b；F1 字幕逐句缓存与限时重试，减少跳字和英文回退；Fitness+ 选择英文显示双语；保持 Music 兼容'
+    lines[1] = '#!desc=20261124c；F1 独立等待上限及逐句校验重试，减少英文回退；Fitness+ 选择英文显示双语；保持 Music 兼容'
     return '\n'.join(lines) + '\n'
 
 
