@@ -168,6 +168,51 @@ for(const playable of [
 }
 assert.deepEqual([...store.keys()].filter(key=>key.startsWith('f1cc-event-')),registrationsBefore,
   'condensed VOD must not register an experimental playback entry');
+// Native sports VTT has no cue ids and includes positioning and timestamp maps.
+const nativeURL='https://hls-amt.itunes.apple.com/itunes-assets/HLSSportsVodVideo211/v4/aa/bb/cc/sample/P1560312730_A6837919154_en_subtitles_V2-0.webvtt';
+const nativeHeader='WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:900000,LOCAL:00:00:00.000';
+const nativeTiming='00:00:00.240 --> 00:00:04.560 line:0%,start position:50%,middle';
+const nativeVTT=nativeHeader+'\n\n'+nativeTiming+'\nVerstappen leads the race.\n\n'+
+  'second-cue\n00:00:04.860 --> 00:00:08.000\nNorris is in second place.\n\n';
+let beforeNative=calls.length;
+const nativeResult=run(nativeURL,nativeVTT,{translation:'测试中文'});
+assert.ok(nativeResult.body.includes('测试中文'));
+assert.ok(nativeResult.body.startsWith(nativeHeader+'\n\n'+nativeTiming+'\n'));
+assert.ok(nativeResult.body.includes('second-cue\n00:00:04.860 --> 00:00:08.000'));
+assert.equal(nativeResult.response,undefined,'native VTT uses a response body edit, not a playback redirect');
+assert.equal(calls.length,beforeNative+1);
+run(nativeURL+'?cache=test',nativeVTT);
+assert.equal(calls.length,beforeNative+1,'native VTT reuses sentence translations across query changes');
+for(const candidate of [
+  nativeURL.replace('A6837919154','A999999'),nativeURL.replace('_en_','_es_'),
+  nativeURL.replace('HLSSportsVodVideo211','HLSVideo211'),nativeURL.replace('hls-amt.itunes.apple.com','example.com'),
+  nativeURL.replace('.webvtt','.m4s'),
+])assert.deepEqual(run(candidate,nativeVTT),{},'unregistered assets, unrelated hosts and non-English/non-sports resources pass through');
+assert.equal(calls.length,beforeNative+1);
+assert.deepEqual(run(nativeURL,nativeHeader+'\n\n'),{body:nativeHeader+'\n\n'});
+assert.deepEqual(run(nativeURL,nativeHeader+'\n\ninvalid cue'),{body:nativeHeader+'\n\ninvalid cue'});
+assert.deepEqual(run(nativeURL,'not a VTT'),{});
+const uncachedVTT=nativeHeader+'\n\n'+nativeTiming+'\nA new racing sentence.\n\n';
+assert.deepEqual(run(nativeURL,uncachedVTT,{apiFails:true,apiStatus:401}),{body:uncachedVTT});
+assert.deepEqual(run(nativeURL,uncachedVTT,{apiHangs:true,fireDeadline:true,lateApi:true}),{body:uncachedVTT},
+  'timeout preserves native English exactly and ignores late translations');
+assert.ok(run(nativeURL,uncachedVTT,{providerArgs:{translation_provider:'volcengine',
+  volc_access_key_id:'AK-test',volc_secret_access_key:'secret-test'},translation:'火山原生字幕'}).body.includes('火山原生字幕'));
+const vodKey=[...store.keys()].find(key=>key.startsWith('f1cc-vod-')&&JSON.parse(store.get(key)).asset==='6837919154');
+const vodRecord=JSON.parse(store.get(vodKey));store.set(vodKey,JSON.stringify({...vodRecord,at:Date.now()-14400001}));
+assert.deepEqual(run(nativeURL,nativeVTT),{},'expired native VTT registration passes through');
+store.set(vodKey,JSON.stringify(vodRecord));
+const capturedNative=new URL('../local/capture-1054/race-en-main-sample.vtt',import.meta.url);
+if(existsSync(capturedNative)){
+  const original=readFileSync(capturedNative,'utf8');
+  const actual=run(nativeURL,original,{translation:'真实格式测试中文'}).body;
+  assert.ok(actual.includes('真实格式测试中文'));
+  assert.deepEqual(actual.split('\n').filter(line=>line.includes('-->')),
+    original.split('\n').filter(line=>line.includes('-->')),'all captured timing and cue settings preserved');
+  assert.equal(actual.split('\n\n')[0],original.split('\n\n')[0]);
+  console.log('Private native VTT fixture passed: captured cue timing/settings and timestamp map retained.');
+}
+console.log('Race in 30 native VTT passed: asset scope, unchanged playback, timing/settings, providers, cache and English fallback.');
 const mixedInput={data:{items:[
   {leagueShortName:'F1',feedName:'Race in 30',playables:[{
     ...condensedPlayable,recapType:undefined,canonicalMetadata:{leagueShortName:'F1'},

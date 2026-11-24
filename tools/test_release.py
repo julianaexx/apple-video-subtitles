@@ -32,6 +32,16 @@ class UnifiedReleaseTests(unittest.TestCase):
         self.assertIn('f1_wait = input,15,', self.plugin)
         f1_rules = [line for line in self.plugin.splitlines() if 'tag=F1.CC.' in line]
         self.assertTrue(all('argument={' + TRANSLATION_ARGUMENTS + ',f1_wait}' in line for line in f1_rules))
+        native = next(line for line in f1_rules if 'tag=F1.CC.NativeVTT,' in line)
+        pattern = native.split(' ', 2)[1]
+        sample = ('https://hls-amt.itunes.apple.com/itunes-assets/HLSSportsVodVideo211/v4/aa/bb/cc/test/'
+                  'P1560312730_A6837919154_en_subtitles_V2-0.webvtt')
+        self.assertRegex(sample, pattern)
+        self.assertRegex(sample + '?token=test', pattern)
+        for url in (sample.replace('_en_', '_es_'), sample.replace('.webvtt', '.m4s'),
+                    sample.replace('HLSSportsVodVideo211', 'HLSVideo211')):
+            self.assertIsNone(re.search(pattern, url))
+        self.assertIn('requires-body=true,max-size=65536,timeout=18,', native)
         self.assertIn('translation_provider = select,"deepseek","volcengine"', self.plugin)
         for argument in ('volc_access_key_id', 'volc_secret_access_key'):
             self.assertIn(argument + ' = input,""', self.plugin)

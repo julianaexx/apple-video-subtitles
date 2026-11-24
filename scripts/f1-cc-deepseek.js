@@ -335,7 +335,7 @@ const F1Captions = (function () {
 
 // Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261124i', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261124j', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
@@ -399,6 +399,12 @@ const F1Captions = (function () {
       const asset=field(value,'a'),program=field(value,'id');return asset&&program?'asset-'+program+'-'+asset:null;
     }catch(_){return null;}
   }
+  function nativeVTT(source){
+    const match=/^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/P(\d+)_A(\d+)_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$/.exec(source);
+    if(!match)return false;
+    const record=read('vod-'+hash(match[1]+':'+match[2]));
+    return !!record&&record.program===match[1]&&record.asset===match[2]&&Date.now()-record.at<14400000;
+  }
   function registerUTS(body){
     let changed=0,skipped=0;
     function walk(node,inherited,condensed){
@@ -412,7 +418,15 @@ const F1Captions = (function () {
           .some(value=>typeof value==='string'&&/\brace\s+in\s+30\b/i.test(value));
       if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){
         const source=node.assets.hlsUrl,key=identity(source);
-        if(condensed)skipped++;
+        if(condensed){
+          skipped++;
+          // Register the asset, without changing Apple's signed playback URL.
+          // Only its observed native English WebVTT responses may be translated.
+          const program=field(source,'id'),asset=field(source,'a');
+          if(service.ready&&/^\d+$/.test(program||'')&&/^\d+$/.test(asset||'')){
+            write('vod-'+hash(program+':'+asset),{program,asset,at:Date.now()});
+          }
+        }
         // Keep FairPlay certificate, nonce and license URLs exactly as Apple sent them.
         if(!condensed&&key&&masterSource(source)&&service.ready){
           const token=hash(key);
@@ -579,11 +593,18 @@ const F1Captions = (function () {
   }
   function translate(record,relatedRecords=[]){
     const body=record.body;
-    const chunks=body.trimEnd().split(/\n{2,}/),cues=[];
+    const deliver=value=>record.native?finish({body:value}):send(value,'text/vtt; charset=utf-8');
+    const chunks=body.replace(/\r\n?/g,'\n').trimEnd().split(/\n{2,}/),cues=[];
+    if(record.native&&(!/^\ufeff?WEBVTT(?:[ \t].*)?(?:\n|$)/.test(chunks[0])||body.length>65536)){finish({});return;}
+    const timing=/^(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}\s+-->\s+(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}(?:\s.*)?$/;
     for(let i=1;i<chunks.length;i++){
-      const row=chunks[i].split('\n');if(row.length>=3&&row[1].includes('-->'))cues.push({index:i,prefix:row.slice(0,2).join('\n'),text:row.slice(2).join('\n')});
+      const row=chunks[i].split('\n');
+      if(/^(NOTE(?:\s|$)|STYLE$|REGION$)/.test(row[0]))continue;
+      const at=timing.test(row[0])?0:1;
+      if(!timing.test(row[at]||'')||at+1>=row.length){deliver(body);return;}
+      cues.push({index:i,prefix:row.slice(0,at+1).join('\n'),text:row.slice(at+1).join('\n')});
     }
-    if(!cues.length||cues.length>60||!service.ready){send(body,'text/vtt; charset=utf-8');return;}
+    if(!cues.length||cues.length>60||!service.ready){deliver(body);return;}
     let translationCues=cues;
     const related=relatedRecords.filter(row=>row&&row.version===VERSION&&typeof row.body==='string');
     if(related.length){
@@ -617,6 +638,7 @@ const F1Captions = (function () {
       else if(!missing.includes(text))missing.push(text);
     }
     function output(){
+      if(!values.size)return body;
       for(const cue of cues)chunks[cue.index]=cue.prefix+'\n'+(values.get(normalize(cue.text))||cue.text);
       return chunks.join('\n\n')+'\n\n';
     }
@@ -628,9 +650,9 @@ const F1Captions = (function () {
         const cache=cachedTranslation(text);if(cache)values.set(text,cache.translation);
       }
       log('英文回退：'+reason+'；缓存命中 '+values.size+'，未译 '+missing.filter(text=>!values.has(text)).length);
-      send(output(),'text/vtt; charset=utf-8');
+      deliver(output());
     }
-    if(!missing.length){log('逐句翻译缓存命中 '+cues.length+' 条');send(output(),'text/vtt; charset=utf-8');return;}
+    if(!missing.length){log('逐句翻译缓存命中 '+cues.length+' 条');deliver(output());return;}
     // Independent of Fitness+; the request script budget also covers two short media fetches.
     const ms=Math.max(2,Math.min(15,Number(args.f1_wait)||15))*1000;
     const started=Date.now();let attempts=0;
@@ -696,7 +718,7 @@ const F1Captions = (function () {
         complete(failure);
       });}catch(_){if(!settled&&!done){settled=true;complete({reason:'翻译请求异常',retry:false});}}
     }
-    function finishTranslation(){log('已翻译新句 '+missing.length+' 条');send(output(),'text/vtt; charset=utf-8');}
+    function finishTranslation(){log('已翻译新句 '+missing.length+' 条');deliver(output());}
     function singles(){
       const pending=entriesFor(missing.filter(text=>!values.has(text)));
       // Bound cost and concurrency; one malformed batch must not fan out unchecked.
@@ -738,6 +760,7 @@ const F1Captions = (function () {
       const body=$response.body;
       if(body instanceof Uint8Array){observe(body,source);finish({});return;}
       if(typeof body!=='string'){finish({});return;}
+      if(nativeVTT(source)){log('精简版原生英文字幕');translate({body,native:true});return;}
       if(/^https:\/\/uts-api\.itunes\.apple\.com\/uts\//.test(source)){
         const output=registerUTS(body);finish(output?{body:output}:{});return;
       }

@@ -39,6 +39,8 @@ def build(base, script_url):
     rules = [
         r'http-response ^https:\/\/uts-api\.itunes\.apple\.com\/uts\/(?:v1|v2|v3)\/ '
         + 'script-path=' + script_url + ',requires-body=true,max-size=0,timeout=2,tag=F1.CC.Register' + arguments,
+        r'http-response ^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$ '
+        + 'script-path=' + script_url + ',requires-body=true,max-size=65536,timeout=18,tag=F1.CC.NativeVTT' + arguments,
         r'http-response ^https:\/\/' + linear + content + r'[^\s?]*\.m3u8(?:\?.*)?$ '
         + 'script-path=' + script_url + ',requires-body=true,max-size=2097152,timeout=2,tag=F1.CC.Media' + arguments,
         r'http-response ^https:\/\/' + linear + content + r'Segment\(\d+\)\.m4v(?:\?.*)?$ '
@@ -57,7 +59,7 @@ def build(base, script_url):
     if set(hosts) & {'play.itunes.apple.com', 'play-edge.itunes.apple.com', 'linear.tv.apple.com'}:
         raise ValueError('shared playback/license hosts must not be intercepted')
     lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ / F1 可选翻译'
-    lines[1] = '#!desc=20261124i；修复 Race in 30 精简版播放，保留原生入口；同步上游 v261123a；保留 Fitness+ / F1 可选翻译及 Music 兼容'
+    lines[1] = '#!desc=20261124j；新增 Race in 30 原生英文字幕翻译，保留原生播放入口；同步上游 v261123a；保留 Fitness+ / F1 可选翻译及 Music 兼容'
     return '\n'.join(lines) + '\n'
 
 
