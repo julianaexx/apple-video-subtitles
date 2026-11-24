@@ -39,12 +39,13 @@
   "verified_state": {
     "fitness_previous": "20261123d independent Chinese track was confirmed on Loon 3.5.3(1014). It intercepted play.itunes.apple.com.",
     "music_report": "User confirmed certificate error at play.itunes.apple.com on the same iPhone/iPad, disappearing when this plugin is disabled.",
-    "current_release": "20261124h: upstream v261123a; Sao Paulo replay and Las Vegas preview Chinese subtitles. All Loon script downloads use julianaexx/apple-video-subtitles. Existing Fitness/F1 translation behavior retained; no phone verification.",
-    "publication": "20261124h: mirrored subtitles and hashed runtime pushed in 2dcfd1c. All 119 unique script URLs returned HTTP 200 and matched exact local/pinned bytes and SHA-256 before advancing both Loon aliases. Real phone playback remains unverified.",
+    "current_release": "20261124i: Race in 30 / Condensed F1 VOD preserves native signed playback instead of entering the experimental CatchUp CC bridge. Retains upstream v261123a static subtitles and existing Fitness/F1 translation. Condensed Chinese subtitle support and phone confirmation remain outstanding.",
+    "publication": "20261124i: runtime and sources pushed in 636cd13 before subscription update. All 119 unique referenced script URLs returned HTTP 200 and matched exact local/pinned bytes and SHA-256 before advancing both Loon aliases.",
     "no_real_api_test": "No user API keys or phone session available. DeepSeek and Volcengine API tests use mocks; Volcengine signatures are compared with independent Node crypto calculations following the official SDK signing protocol.",
-    "offline_checks": "20261124h: reproducible artifacts, 10 Python tests and five JavaScript suites. Static routing checked against the updated upstream dispatcher, including Sao Paulo replay and Las Vegas preview; all mirrored resources match manifest bytes and SHA-256. No real API or phone checks.",
+    "offline_checks": "20261124i: reproducible artifacts, 10 Python tests and five JavaScript suites passed. Sanitized metadata reproduced the old 8d55d028 bridge; regression tests preserve condensed signed URLs and FairPlay fields, including inherited metadata and supported replay siblings. Actual supplied capture verified two Race in 30 playables unchanged; no private capture data published. No real API or phone checks.",
     "f1_phone_feedback": "User confirmed jumping text improved substantially. User supplied a 20261124c script log showing a two-cue request falling back after two translation-count mismatches. This confirms structural response mismatch for that occurrence, not timeout. Raw response content was not supplied.",
-    "fallback_diagnostics": "Confirmed log: translation-count mismatch on both batch attempts, cached cues 0, untranslated cues 2. No private source URLs, account headers or original captured media are stored in tracked diagnostics."
+    "fallback_diagnostics": "Confirmed log: translation-count mismatch on both batch attempts, cached cues 0, untranslated cues 2. No private source URLs, account headers or original captured media are stored in tracked diagnostics.",
+    "race_in_30_feedback": "User confirms native Race in 30 playback has always worked. Supplied capture shows experimental bridge returning 302, followed by a native playlist request without a captured response. It does not reveal which master validation failed or prove token expiration."
   },
   "fitness_flow": [
     "Do not intercept play.itunes.apple.com. No Fitness master rewrite, independent Chinese track or single-course injection is used by the unified release.",
@@ -53,6 +54,7 @@
     "Translation has a 2-15 second deadline (default 8), controlled by deepseek_wait for either provider. DeepSeek retains its versioned 128-slot segment cache; Volcengine uses a 512-slot bounded sentence cache and retains successful batches during partial failures."
   ],
   "f1_flow_and_limits": [
+    "Race in 30 / Condensed VOD bypasses generic F1 AI registration, including metadata inherited from shelf items. Preserve native playback while its actual HLS/caption format remains unverified; this is playback protection, not condensed subtitle support.",
     "One UTS JS dispatcher applies the pinned static catalog first, then registers remaining F1 OnDemand assets by league metadata. No parallel jq UTS rewrite.",
     "Static movies, series, F1 replays and previews retain upstream routing. AI is generic for other F1 OnDemand assets with supported English CC1 CatchUp media.",
     "Rewrite only hlsUrl to the hls-amt master bridge; retain FairPlay certificate, nonce and license URLs. Never intercept linear.tv.apple.com, play.itunes.apple.com or play-edge.itunes.apple.com.",
