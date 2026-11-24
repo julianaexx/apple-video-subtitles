@@ -11,7 +11,7 @@ import { pinnedSource } from './upstream_source.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const plugin = fs.readFileSync(path.join(root, 'build/base/apple-video-subtitles.plugin'), 'utf8');
 const program = /response-body-json-jq '([^\n]*)'$/m.exec(plugin)[1];
-const source = pinnedSource('b14a2fd842d6869ab64e1bd71db6f42319a685f0',
+const source = pinnedSource('35b5421e5efa54ff5d0617bcebec57eed325158a',
   'payloads/surge/series/2019-formula-1-drive-to-survive/season-08/uts-redirect.js');
 const catalog = name => JSON.parse(new RegExp('^const ' + name + ' = (.+);$', 'm').exec(source)[1]);
 const play = 'https://play.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?';

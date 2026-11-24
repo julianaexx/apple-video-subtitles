@@ -1,4 +1,5 @@
 {
   "version": 2,
-  "runtime_base_url": "https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/scripts"
+  "runtime_base_url": "https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/scripts",
+  "subtitle_base_url": "https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/vendor/pinned"
 }

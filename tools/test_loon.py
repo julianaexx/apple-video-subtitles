@@ -29,9 +29,7 @@ class ConversionTests(unittest.TestCase):
             self.assertEqual(parsed["timeout"], rule.options["timeout"])
             self.assertNotIn("requires-body", parsed)
             match = generator.PINNED_URL.fullmatch(rule.options["script-path"])
-            expected = f"https://cdn.jsdelivr.net/gh/rexchen1803/apple-video-subtitles@{match[1]}/{match[2]}"
-            if match[2] in generator.RAW_PATHS:
-                expected = rule.options["script-path"]
+            expected = generator.subtitle_url(rule.options["script-path"])
             self.assertEqual(parsed["script-path"], expected)
         self.assertIn("hostname = " + ", ".join(hosts), plugin)
         self.assertNotIn("%APPEND%", plugin)

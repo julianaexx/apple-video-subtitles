@@ -9,7 +9,7 @@ import re
 import subprocess
 from urllib.request import urlopen
 
-from generate_loon import ROOT, SOURCE, PINNED_URL, parse_module, pinned_source
+from generate_loon import ROOT, SOURCE, PINNED_URL, parse_module, pinned_source, subtitle_url
 
 CDN = re.compile(
     r"https://cdn\.jsdelivr\.net/gh/rexchen1803/apple-video-subtitles@"
@@ -17,8 +17,14 @@ CDN = re.compile(
 )
 
 
+def mirror_match(url):
+    base = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))['subtitle_base_url']
+    return re.fullmatch(re.escape(base.rstrip('/') + '/') +
+                        r'([a-f0-9]{40})/(payloads/surge/[A-Za-z0-9_./-]+\.js)', url)
+
+
 def git_source(url):
-    match = CDN.fullmatch(url) or PINNED_URL.fullmatch(url)
+    match = mirror_match(url) or CDN.fullmatch(url) or PINNED_URL.fullmatch(url)
     if not match or ".." in match[2].split("/"):
         raise ValueError(f"Unsupported script URL: {url}")
     raw = f"https://raw.githubusercontent.com/rexchen1803/apple-video-subtitles/{match[1]}/{match[2]}"
@@ -45,10 +51,7 @@ def repair(text):
         raw = by_pattern.get(pattern)
         if raw is None:
             raise ValueError(f"No upstream rule matches missing resource: {old}")
-        new = re.sub(
-            r"^https://raw\.githubusercontent\.com/rexchen1803/apple-video-subtitles/([a-f0-9]{40})/",
-            r"https://cdn.jsdelivr.net/gh/rexchen1803/apple-video-subtitles@\1/", raw,
-        )
+        new = subtitle_url(raw)
         if git_source(new) is None:
             raise ValueError(f"Replacement missing in Git: {new}")
         changes.append({"old": old, "new": new})
@@ -71,7 +74,7 @@ def verify(text, expected_scripts=None):
             data = response.read()
             if response.status != 200:
                 raise ValueError(f"HTTP {response.status}: {url}")
-            if CDN.fullmatch(url) or PINNED_URL.fullmatch(url):
+            if mirror_match(url) or CDN.fullmatch(url) or PINNED_URL.fullmatch(url):
                 expected = git_source(url)
                 if expected is None or data != expected:
                     raise ValueError(f"Remote script differs from pinned Git source: {url}")

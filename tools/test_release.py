@@ -1,5 +1,6 @@
 """Regression checks for the Music-safe single-plugin release."""
 import hashlib
+import json
 import re
 import unittest
 
@@ -47,7 +48,7 @@ class UnifiedReleaseTests(unittest.TestCase):
         self.assertEqual(self.files['loon/apple-video-subtitles-f1-experimental.plugin'], self.plugin)
 
     def test_remote_assets_are_content_addressed_and_reproducible(self):
-        urls = set(re.findall(r'script-path=(https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/[^,\s]+)', self.plugin))
+        urls = set(re.findall(r'script-path=(https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/scripts/[^,\s]+)', self.plugin))
         self.assertEqual(len(urls), 2)
         for url in urls:
             filename = url.rsplit('/', 1)[1]
@@ -55,6 +56,22 @@ class UnifiedReleaseTests(unittest.TestCase):
             digest = hashlib.sha256(content.encode('utf-8')).hexdigest()
             self.assertTrue(filename.endswith('-' + digest + '.js'))
         self.assertEqual(self.files, release_files(ROOT / 'config/release.json'))
+
+    def test_static_subtitles_are_complete_and_served_by_our_repository(self):
+        urls = set(re.findall(r'script-path=(https://[^,\s]+)', self.plugin))
+        prefix = 'https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/'
+        manifest = json.loads((ROOT / 'vendor/pinned-manifest.json').read_text())['files']
+        for url in urls:
+            self.assertTrue(url.startswith(prefix), url)
+            path = url[len(prefix):]
+            data = (ROOT / path).read_bytes() if path.startswith('vendor/') else self.files[path].encode('utf-8')
+            if path.startswith('vendor/pinned/'):
+                expected = manifest[path[len('vendor/pinned/'):]]
+                self.assertEqual(len(data), expected['bytes'])
+                self.assertEqual(hashlib.sha256(data).hexdigest(), expected['sha256'])
+                self.assertNotRegex(data.decode('utf-8'), r'https?://[^\s\x22\x27]*rexchen1803')
+        for tag in ('F1.Replay.20-sao-paulo.Track.Vtt.request', 'F1.Preview.LV.VTT.request'):
+            self.assertIn('tag=' + tag + ',', self.plugin)
 
 
 if __name__ == '__main__':

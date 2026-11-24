@@ -142,7 +142,7 @@ const staticURLs=[
 ];
 const staticInput={rows:staticURLs.map(hlsUrl=>({hlsUrl})),keep:{hlsUrl:null}};
 let expectedStatic;
-vm.runInNewContext(pinnedSource('b14a2fd842d6869ab64e1bd71db6f42319a685f0',
+vm.runInNewContext(pinnedSource('35b5421e5efa54ff5d0617bcebec57eed325158a',
   'payloads/surge/series/2019-formula-1-drive-to-survive/season-08/uts-redirect.js'),{
   URL,$response:{body:JSON.stringify(staticInput)},$done:value=>expectedStatic=JSON.parse(value.body),
 });

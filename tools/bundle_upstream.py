@@ -15,7 +15,10 @@ def bundle(checkout, destination):
         r'https://raw\.githubusercontent\.com/rexchen1803/apple-video-subtitles/([a-f0-9]{40})/(payloads/surge/[\w./-]+\.js)', module)))
     if not pairs:
         raise ValueError('no pinned sources found')
-    files = {}
+    manifest_path = destination / 'vendor/pinned-manifest.json'
+    # Keep historical pins: regression fixtures and older subscriptions may
+    # still reference them after the active module advances.
+    files = json.loads(manifest_path.read_text(encoding='utf-8'))['files'] if manifest_path.is_file() else {}
     for revision, path in pairs:
         if '..' in path.split('/'):
             raise ValueError('invalid upstream path')
@@ -25,8 +28,8 @@ def bundle(checkout, destination):
         target.write_bytes(data)
         files[revision + '/' + path] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
     manifest = {'version': 1, 'upstream': 'https://github.com/rexchen1803/apple-video-subtitles', 'files': files}
-    (destination / 'vendor/pinned-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-    print(f'Bundled {len(files)} pinned upstream dependencies')
+    manifest_path.write_bytes((json.dumps(manifest, indent=2) + '\n').encode('utf-8'))
+    print(f'Bundled {len(pairs)} active dependencies; retained {len(files)} total pinned sources')
 
 
 if __name__ == '__main__':

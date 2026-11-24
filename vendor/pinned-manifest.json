@@ -457,6 +457,34 @@
     "b958fddafa4d75c1534d9e0bb85151c02461c418/payloads/surge/f1/2026/surge-formal-v9-f1-18-united-states.js": {
       "bytes": 268113,
       "sha256": "33db32f3627570c7a658a49af49a3c2cf7f24941e8d47d7216245ebb6ee555c1"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/f1/2026/surge-formal-v9-f1-20-sao-paulo.js": {
+      "bytes": 306287,
+      "sha256": "2c68672be2ef7636ff02ff3b772d26ec5a12001c672020e480bab4ceacbf6055"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/f1/previews/2026/21-las-vegas/master.js": {
+      "bytes": 140352,
+      "sha256": "7c1e7030b6ed855be962cc05cc58fcf9bcd79762f57c8ba35f089b4f842f8af4"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/f1/previews/2026/21-las-vegas/playlist.js": {
+      "bytes": 140354,
+      "sha256": "379d3a3c9aca8538e4ceae8fa7e9ddb602b09702456c70df435a6804e6851322"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/f1/previews/2026/21-las-vegas/vtt.js": {
+      "bytes": 366548,
+      "sha256": "2ee836a075252364287a8585c18a0ad7a3d59afe1cc81965bbd2a62062d296e8"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/runtime/f1/replay_track_master.js": {
+      "bytes": 8848,
+      "sha256": "eaf8844d381ac251fe22db1d44148311be9c45050c91ed1838d2df8f715eeafe"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/runtime/f1/replay_track_playlist.js": {
+      "bytes": 8014,
+      "sha256": "750908d26eb1cbef2f911c7fad95d9df027724980fe2033a7c30c41e69575bde"
+    },
+    "35b5421e5efa54ff5d0617bcebec57eed325158a/payloads/surge/series/2019-formula-1-drive-to-survive/season-08/uts-redirect.js": {
+      "bytes": 16677,
+      "sha256": "7fe88cadb59c2150bb2e1b0525c6ffb34a444c0e8c85703af659ef3784e2e420"
     }
   }
 }

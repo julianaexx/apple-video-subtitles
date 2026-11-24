@@ -17,8 +17,8 @@
     "tools": "All build/translation tools, source templates and regression tests.",
     "scripts": "Unified UTS/F1 and native Fitness Chinese-only runtimes; shared translation adapter is bundled into both content-addressed assets.",
     "loon": "One unified plugin plus a compatibility alias at the former F1 experimental URL. Install only one.",
-    "config/release.json": "Version 2: runtime base URL. Build derives full SHA-256 filenames from current sources; assets must be uploaded before plugin imports work.",
-    "vendor/pinned": "Exact upstream scripts for 114 referenced commit/path pairs, checked by SHA-256 when Git history is absent.",
+    "config/release.json": "Version 2: own-repository runtime_base_url and subtitle_base_url. Static subtitles retain original commit/path identities under vendor/pinned; runtimes use full SHA-256 filenames.",
+    "vendor/pinned": "Exact upstream scripts: 118 active dependencies, 121 retained commit/path pairs. Loon loads these byte-identical resources from this repository; SHA-256 checked offline and on publication.",
     "vendor/pinned-manifest.json": "Checksums for pinned sources. No separate clone of original Git history required.",
     "vendor/upstream-snapshot.json": "Upstream source attribution, snapshot revision and checksums.",
     "payloads": "Full upstream payload source snapshot; includes recorded real HLS master structure used in regression tests.",
@@ -39,10 +39,10 @@
   "verified_state": {
     "fitness_previous": "20261123d independent Chinese track was confirmed on Loon 3.5.3(1014). It intercepted play.itunes.apple.com.",
     "music_report": "User confirmed certificate error at play.itunes.apple.com on the same iPhone/iPad, disappearing when this plugin is disabled.",
-    "current_release": "20261124f: manual DeepSeek / Volcengine machine translation selection shared by Fitness+ and F1. No real API or phone verification.",
-    "publication": "20261124f on main. Both content-addressed runtimes were pushed in commit 0a02e00 and returned HTTP 200 with exact local-byte and SHA-256 matches before updating both plugin subscription aliases. Real API/phone checks remain unverified.",
+    "current_release": "20261124h: upstream v261123a; Sao Paulo replay and Las Vegas preview Chinese subtitles. All Loon script downloads use julianaexx/apple-video-subtitles. Existing Fitness/F1 translation behavior retained; no phone verification.",
+    "publication": "20261124h prepared locally; publish resources and verify remote bytes before advancing either Loon subscription alias.",
     "no_real_api_test": "No user API keys or phone session available. DeepSeek and Volcengine API tests use mocks; Volcengine signatures are compared with independent Node crypto calculations following the official SDK signing protocol.",
-    "offline_checks": "20261124f: python -B tools/dev.py passed with reproducible release artifacts, 9 Python tests and five JavaScript suites. Coverage includes independent Node crypto signature comparison, Volcengine batch limits/concurrency, transient and permanent errors, deadline/late callback handling, partial results, provider-isolated caches, selected-credential F1 registration, and existing DeepSeek/playback regressions. Real API and phone checks remain unverified.",
+    "offline_checks": "20261124h: reproducible artifacts, 10 Python tests and five JavaScript suites. Static routing checked against the updated upstream dispatcher, including Sao Paulo replay and Las Vegas preview; all mirrored resources match manifest bytes and SHA-256. No real API or phone checks.",
     "f1_phone_feedback": "User confirmed jumping text improved substantially. User supplied a 20261124c script log showing a two-cue request falling back after two translation-count mismatches. This confirms structural response mismatch for that occurrence, not timeout. Raw response content was not supplied.",
     "fallback_diagnostics": "Confirmed log: translation-count mismatch on both batch attempts, cached cues 0, untranslated cues 2. No private source URLs, account headers or original captured media are stored in tracked diagnostics."
   },
@@ -85,7 +85,9 @@
     "Get a separate full checkout of rexchen1803/apple-video-subtitles. It is a different repository/history; do not merge it blindly into this main branch.",
     "Review and copy desired updated upstream payloads/client modules. Record the new upstream revision in vendor/upstream-snapshot.json.",
     "Run python -B tools/bundle_upstream.py /path/to/upstream-checkout to refresh fixed-commit dependencies referenced by the current Surge module.",
-    "Review data shape changes reported by generator; rerun tests, rebuild and review the stable/experimental plugin diff before publishing."
+    "Review data shape changes reported by generator; rerun tests, rebuild and review the stable/experimental plugin diff before publishing.",
+    "Keep vendor/pinned and its manifest append-only so previous subscriptions and regression sources continue to work. Generated Loon script URLs use config/release.json subtitle_base_url; source Surge modules retain upstream provenance.",
+    "Publish and verify all mirrored scripts and new hashed runtimes in this repository before advancing either Loon subscription. No live subtitle script download should point at rexchen1803 or its CDN."
   ],
   "private_material_not_published": [
     "Original ZIP captures, signed playback URLs, request headers/cookies, API keys, local translation model/runtime downloads, and computer paths.",

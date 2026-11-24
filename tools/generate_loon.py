@@ -16,22 +16,19 @@ SOURCE = ROOT / "surge/apple-video-subtitles.sgmodule"
 OUTPUT = ROOT / "build/base"
 LOCAL_CATALOG = ROOT / "local/catalog.json"
 UTS_TAG = "AppleTV.Movie.SafeBridgeFull.UTS.response"
-# These paths returned CDN 403 during full-resource validation on 2026-11-23.
-# Use the identical pinned GitHub source; keep generation deterministic.
-RAW_PATHS = {
-    "payloads/surge/f1/2026/surge-formal-v9-f1-12-netherlands.js",
-    "payloads/surge/f1/2026/surge-formal-v9-f1-13-spain.js",
-    "payloads/surge/series/2019-formula-1-drive-to-survive/season-08/playlist-dts-s08e05.js",
-    "payloads/surge/series/2019-formula-1-drive-to-survive/season-08/vtt-dts-s08e03.js",
-    "payloads/surge/movies/1988-big/subtitle.js",
-    "payloads/surge/movies/1995-bad-boys/subtitle.js",
-    "payloads/surge/movies/2004-anchorman/manifest.js",
-    "payloads/surge/movies/2009-julie-and-julia/playlist.js",
-}
 PINNED_URL = re.compile(
     r"https://raw\.githubusercontent\.com/rexchen1803/apple-video-subtitles/"
     r"([0-9a-f]{40})/(payloads/surge/[A-Za-z0-9_./-]+\.js)"
 )
+
+
+def subtitle_url(url):
+    """Serve exact upstream bytes from our versioned, append-only mirror."""
+    match = PINNED_URL.fullmatch(url)
+    if not match or '..' in match[2].split('/'):
+        raise ValueError('invalid pinned subtitle URL')
+    config = json.loads((ROOT / 'config/release.json').read_text(encoding='utf-8'))
+    return config['subtitle_base_url'].rstrip('/') + '/' + match[1] + '/' + match[2]
 
 
 @dataclass
@@ -172,10 +169,7 @@ def generate(local_catalog=LOCAL_CATALOG):
         o = rule.options
         if o["type"] == "http-response":
             continue
-        match = PINNED_URL.fullmatch(o["script-path"])
-        script = f"https://cdn.jsdelivr.net/gh/rexchen1803/apple-video-subtitles@{match[1]}/{match[2]}"
-        if match[2] in RAW_PATHS:
-            script = o["script-path"]
+        script = subtitle_url(o["script-path"])
         lines.append(
             f'{o["type"]} {o["pattern"]} script-path={script},'
             f'timeout={o["timeout"]},tag={rule.tag},enable=true'
