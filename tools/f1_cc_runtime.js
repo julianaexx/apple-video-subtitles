@@ -197,14 +197,28 @@
     const root=source.split('?')[0].replace(/\/[^/]+$/,''),stream=read('stream-'+hash(root));
     const list=stream&&read('playlist-'+stream.key);
     const row=list&&Array.isArray(list.segments)&&list.segments.find(row=>row.source.split('?')[0]===record.url);
-    if(record.continued||!row||!row.previous){translate(record);return;}
+    if(!row){translate(record);return;}
+    function translateWindow(){
+      const index=list.segments.indexOf(row),next=list.segments[index+1];
+      if(!next||!next.previous){translate(record);return;}
+      const cached=read(slot(next.source));
+      if(cached&&cached.version===VERSION&&cached.url===next.source.split('?')[0]&&Date.now()-cached.at<14400000){
+        translate(record,[refresh(cached)]);return;
+      }
+      fetchSource(next.source,true,bytes=>{
+        const upcoming=observe(bytes,next.source);
+        translate(record,upcoming?[upcoming]:[]);
+      },()=>translate(record),1500);
+    }
+    if(record.continued){translateWindow();return;}
     // Subtitle downloads often run ahead of video. Reconstruct the preceding
     // display state once, so a cue spanning the boundary is not dropped.
+    if(!row.previous){translateWindow();return;}
     const cached=read(slot(row.previous));
     if(cached&&cached.version===VERSION&&cached.url===row.previous.split('?')[0]&&Date.now()-cached.at<14400000){
-      refresh(cached);translate(refresh(record));return;
+      refresh(cached);record=refresh(record);translateWindow();return;
     }
-    fetchSource(row.previous,true,bytes=>{observe(bytes,row.previous);translate(refresh(record));},
+    fetchSource(row.previous,true,bytes=>{observe(bytes,row.previous);record=refresh(record);translateWindow();},
       ()=>translate(record),1500);
   }
   function observe(bytes,source){
@@ -221,13 +235,26 @@
     log('提取稳定 CC，视频原样放行');
     return record;
   }
-  function translate(record){
+  function translate(record,relatedRecords=[]){
     const body=record.body;
     const chunks=body.trimEnd().split(/\n{2,}/),cues=[];
     for(let i=1;i<chunks.length;i++){
       const row=chunks[i].split('\n');if(row.length>=3&&row[1].includes('-->'))cues.push({index:i,prefix:row.slice(0,2).join('\n'),text:row.slice(2).join('\n')});
     }
     if(!cues.length||cues.length>60||!service.ready){send(body,'text/vtt; charset=utf-8');return;}
+    let translationCues=cues;
+    const related=relatedRecords.filter(row=>row&&row.version===VERSION&&typeof row.body==='string');
+    if(related.length){
+      translationCues=cues.slice();
+      for(const item of related){
+        const blocks=item.body.trimEnd().split(/\n{2,}/);
+        for(let i=1;i<blocks.length;i++){
+          const row=blocks[i].split('\n');
+          if(row.length>=3&&row[1].includes('-->'))translationCues.push({index:i,prefix:row.slice(0,2).join('\n'),text:row.slice(2).join('\n')});
+        }
+      }
+      if(translationCues.length>80)translationCues=cues;
+    }
     const normalize=text=>text.replace(/\s+/g,' ').trim();
     const cacheModel=service.provider==='deepseek'?model:service.identity;
     const cueKey=(text,version='v3')=>'cue-'+version+'-'+(parseInt(hash(cacheModel+':'+normalize(text)),16)%512);
@@ -241,7 +268,7 @@
         .find(row=>row&&row.model===cacheModel&&row.text===text&&valid(row.translation,text));
     }
     const values=new Map(),missing=[];
-    for(const cue of cues){
+    for(const cue of translationCues){
       const text=normalize(cue.text);
       const cache=cachedTranslation(text);
       if(cache)values.set(text,cache.translation);
