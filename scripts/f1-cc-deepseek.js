@@ -1,3 +1,35 @@
+const APPLE_STATIC_CATALOG = {"previews":[{"referenceId":"umc.cmr.f1live.sp.44pxqond8524r9rdavtv5frb0","masterPath":"/__f1_mx_live_preview/master.m3u8","revision":"f1pv261104a-mx"},{"referenceId":"umc.cmr.f1live.sp.4u929zfqzsx24g94h48fc52os","masterPath":"/__f1_sp_live_preview/master.m3u8","revision":"sp20261109b"}],"revisions":{"6822052354":"nov1103-af0ce1150f0c","6820735971":"nov1103-e0c60e7390f7","6822050128":"nov1103-6fc55b7e640e","6822053507":"nov1103-8fd5be969c2b","6822048451":"nov1103-f8230d9bb2f5","6822054779":"nov1103-88e1f9dbab3b","6822072736":"nov1103-69640299476e","6820730686":"nov1103-6ef1d79f94db","6822050541":"nov1103-6daa17ad6475","6822054364":"nov1103-cedd5982069e","6822101531":"nov1103-74a882e2b88d","6822048777":"nov1103-247c33b4a2e1","6822054977":"nov1103-2bcdd526499b","6822050093":"nov1103-4727ffd19d96","6820740030":"nov1103-7376a389d1f6","6820731539":"nov1103-0b7da4b5ad97","6824697268":"nov1103-a1bc6bcda5e8","6822040006":"nov1103-0a760bc619f6","6820740767":"nov1103-2e1ab7dbca31"},"movies":{"6793693246":"2016-arrival","6804923769":"2003-master-and-commander","6822052354":"1995-12-monkeys","6820735971":"1993-dave","6822050128":"2014-interstellar","6822053507":"1994-pulp-fiction","6822048451":"1994-forrest-gump","6822054779":"2016-the-nice-guys","6822072736":"2002-minority-report","6820730686":"1995-bad-boys","6822050541":"2013-prisoners","6822054364":"2008-rachel-getting-married","6822101531":"1989-dead-poets-society","6822048777":"2008-get-smart","6822054977":"2006-talladega-nights","6822050093":"2009-julie-and-julia","6820740030":"1988-big","6820731539":"1995-clueless","6824697268":"2004-anchorman","6822040006":"2010-eat-pray-love","6820740767":"2008-body-of-lies"},"series":{"1880499459":"dts-s08e01","1880598345":"dts-s08e02","1880600976":"dts-s08e03","1880613354":"dts-s08e04","1880628537":"dts-s08e05","1880639133":"dts-s08e06","1880673513":"dts-s08e07","1880677128":"dts-s08e08"},"replays":[{"slug":"australia","programId":"1337486392","assetId":"1881724926","revision":"f1aur22m1"},{"slug":"china","programId":"1337522687","assetId":"1881777941","revision":"f1cnr21m2"},{"slug":"japan","programId":"1326620577","assetId":"1881763666","revision":"f1jpr20m1"},{"slug":"miami","programId":"1364568578","assetId":"1881733891","revision":"f1mir20m1"},{"slug":"canada","programId":"1392837560","assetId":"1881753363","revision":"f1car20m1"},{"slug":"monaco","programId":"1411825097","assetId":"1881742204","revision":"f1mcr25m1"},{"slug":"barcelona-catalunya","programId":"1413846083","assetId":"1881690171","revision":"f1bar17m1"},{"slug":"austria","programId":"1429344944","assetId":"1882150267","revision":"f1atr22m1"},{"slug":"great-britain","programId":"1436852938","assetId":"1881739464","revision":"f1gbr26m1"},{"slug":"belgium","programId":"1457248952","assetId":"1881786635","revision":"f1ber12m1"},{"slug":"hungary","programId":"1461869625","assetId":"1881700068","revision":"f1hur32m1"},{"slug":"netherlands","programId":"1478680801","assetId":"1882152939","revision":"f1ntr23m1"},{"slug":"spain","programId":"1497835498","assetId":"1881721455","revision":"f1spr22m1"},{"slug":"italy","programId":"1498372256","assetId":"1881758693","revision":"f1itr1m1"},{"slug":"azerbaijan","programId":"1509835184","assetId":"1882094604","revision":"azr1-76f792623176"},{"slug":"bahrain-malaysia","programId":"1526866852","assetId":"6819360836","revision":"bhm1-57ce7a36cff3"},{"slug":"bahrain-malaysia","programId":"1529375473","assetId":"6819360836","revision":"bhm1-57ce7a36cff3"},{"slug":"singapore","programId":"1525529454","assetId":"1881782888","revision":"20261024r7"},{"slug":"united-states","programId":"1536601273","assetId":"1881678292","revision":"20261107r6"},{"slug":"mexico","programId":"1543396071","assetId":"1882105309","revision":"f1mx20261117r6"}]};
+// Deterministic static subtitle routing, before generic F1 registration.
+function appleStaticPlayback(value) {
+  if (typeof value !== 'string') return value;
+  const catalog = APPLE_STATIC_CATALOG;
+  const source = value.replace(/^https:\/\/play-edge-cdn\.itunes\.apple\.com/i, 'https://play-edge.itunes.apple.com')
+    .replace(/^https:\/\/play-cdn\.itunes\.apple\.com/i, 'https://play.itunes.apple.com');
+  const match = /^https:\/\/([^/?#]+)(\/[^?#]*)(?:\?([^#]*))?$/i.exec(source);
+  if (!match) return value;
+  const host = match[1].toLowerCase(), path = match[2];
+  const field = name => {
+    const entry = (match[3] || '').split('&').find(part => part.startsWith(name + '='));
+    return entry ? entry.slice(name.length + 1) : null;
+  };
+  const bridge = (path, revision, original = source) => 'https://hls-amt.itunes.apple.com' + path
+    + '?rev=' + encodeURIComponent(revision) + '&src=' + encodeURIComponent(original);
+  if (host === 'linear.tv.apple.com' && path === '/v1/hls/playlist.m3u8') {
+    const preview = catalog.previews.find(row => row.referenceId === field('referenceId'));
+    return preview ? bridge(preview.masterPath, preview.revision, value) : value;
+  }
+  if (host !== 'play.itunes.apple.com' && host !== 'play-edge.itunes.apple.com') return value;
+  const episode = Object.keys(catalog.series).find(asset => value.includes(asset));
+  if (episode) return bridge('/__apple_series_master/' + catalog.series[episode] + '/index.m3u8', 'dts8-20260920d');
+  const replay = catalog.replays.find(row => row.programId === field('id') && row.assetId === field('a'));
+  if (replay && path === '/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8') {
+    return bridge('/__f1_replay_master/' + replay.slug + '/index.m3u8', replay.revision);
+  }
+  const movie = Object.keys(catalog.movies).find(asset => value.includes(asset));
+  return movie ? bridge('/__apple_movie_master/' + catalog.movies[movie] + '/index.m3u8',
+    catalog.revisions[movie] || (movie === '6796433608' ? 'v260925a' : 'v260904a')) : value;
+}
+
 // Extract only clear CEA-608 caption packets from fragmented MP4 samples.
 // No media decryption or audio/video modification. ES runtime compatible with Loon.
 const F1Captions = (function () {
@@ -158,7 +190,7 @@ const F1Captions = (function () {
 
 // Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261123b', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261124a', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const model=String(args.deepseek_model || 'deepseek-flash');
   let done=false,timer=null;
@@ -226,7 +258,7 @@ const F1Captions = (function () {
       if(!node||typeof node!=='object')return;
       const meta=node.canonicalMetadata||{};
       const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1';
-      if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType!=='Live'){
+      if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){
         const source=node.assets.hlsUrl,key=identity(source);
         // Keep FairPlay certificate, nonce and license URLs exactly as Apple sent them.
         if(key&&masterSource(source)&&/^sk-[A-Za-z0-9_-]+$/.test(String(args.deepseek_key||'').trim())){
@@ -238,8 +270,18 @@ const F1Captions = (function () {
       }
       for(const key of Object.keys(node))walk(node[key],f1);
     }
-    const data=JSON.parse(body);walk(data,false);
-    log('节目接口识别 F1 回放 '+changed+' 项，许可证地址不改写');
+    const data=JSON.parse(body);
+    function staticWalk(node){
+      if(!node||typeof node!=='object')return;
+      for(const key of Object.keys(node)){
+        if(key==='hlsUrl'&&typeof node[key]==='string'){
+          const target=appleStaticPlayback(node[key]);
+          if(target!==node[key]){node[key]=target;changed++;}
+        }else staticWalk(node[key]);
+      }
+    }
+    staticWalk(data);walk(data,false);
+    log('静态字幕/F1 回放路由 '+changed+' 项，许可证地址不改写');
     return changed?JSON.stringify(data):null;
   }
   function master(body,base){
@@ -265,7 +307,7 @@ const F1Captions = (function () {
       const key=hash(value.source.split('?')[0]);value.key=key;value.group='f1-ai-'+key;
       // Caption content is shared by video renditions. Use one low-bandwidth
       // caption source per pathway so quality switches retain the subtitle group.
-      let row='#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="'+value.group+'",NAME="简体中文（F1 DeepSeek 实验）",LANGUAGE="zh-Hans",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,STABLE-RENDITION-ID="f1-ai-'+hash(registered.identity)+'",URI="'+resource(key,'index.m3u8')+'"';
+      let row='#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="'+value.group+'",NAME="简体中文（F1 AI 实验）",LANGUAGE="zh-Hans",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,STABLE-RENDITION-ID="f1-ai-'+hash(registered.identity)+'",URI="'+resource(key,'index.m3u8')+'"';
       if(pathway!=='default')row+=',PATHWAY-ID='+JSON.stringify(pathway);
       rows.push(row);
     }
@@ -277,9 +319,9 @@ const F1Captions = (function () {
     if(!rows.length)return null;
     // Register only after every variant has passed validation.
     for(const value of groups.values()){
-      write('registry-'+value.key,{source:value.source,at:Date.now()});
+      if(!write('registry-'+value.key,{source:value.source,at:Date.now()}))return null;
       const root=value.source.split('?')[0].replace(/\/[^/]+$/,'');
-      write('stream-'+hash(root),{root,at:Date.now()});
+      if(!write('stream-'+hash(root),{root,at:Date.now()}))return null;
     }
     lines.splice(1,0,...rows);
     // The bridge has a different origin/path: resolve every native media/key URI.
@@ -319,12 +361,17 @@ const F1Captions = (function () {
     const root=source.split('?')[0].replace(/\/[^/]+$/,'');
     const registration=read('stream-'+hash(root));
     if(!registration||registration.root!==root||Date.now()-registration.at>14400000)return null;
-    const stateKey='state-'+hash(root),state=read(stateKey);
+    const cached=read(slot(source));
+    if(cached&&cached.url===source.split('?')[0]&&Date.now()-cached.at<14400000)return cached;
     const data=F1Captions.extract(bytes);
     if(!Number.isFinite(data.duration)||data.duration<=0||data.duration>20)return null;
-    const decoded=F1Captions.decode(data,state&&state.root===root?state.value:null);
+    // State belongs to a media timestamp, not request arrival order. Concurrent
+    // pathways, repeated downloads and backward seeks must not rewind one shared decoder.
+    const stateSlot=time=>'state-'+(parseInt(hash(root+':'+Math.round(time*1000)),16)%128);
+    const state=read(stateSlot(data.origin));
+    const decoded=F1Captions.decode(data,state&&state.root===root&&Date.now()-state.at<14400000?state.value:null);
     const original=F1Captions.webvtt(data,decoded.cues);
-    write(stateKey,{root,value:decoded.state});
+    write(stateSlot(data.origin+data.duration),{root,value:decoded.state,at:Date.now()});
     const record={url:source.split('?')[0],body:original,at:Date.now()};
     write(slot(source),record);
     // Avoid binary payload and caption text in logs.
@@ -338,9 +385,9 @@ const F1Captions = (function () {
       const row=chunks[i].split('\n');if(row.length>=3&&row[1].includes('-->'))cues.push({index:i,prefix:row.slice(0,2).join('\n'),text:row.slice(2).join('\n')});
     }
     const cacheKey='zh-'+(parseInt(hash(record.url+model),16)%128),cache=read(cacheKey);
-    if(cache&&cache.url===record.url&&cache.model===model&&cache.original===body){send(cache.body,'text/vtt; charset=utf-8');return;}
     const key=String(args.deepseek_key||'').trim();
     if(!cues.length||cues.length>60||!/^sk-[A-Za-z0-9_-]+$/.test(key)){send(body,'text/vtt; charset=utf-8');return;}
+    if(cache&&cache.url===record.url&&cache.model===model&&cache.original===body){send(cache.body,'text/vtt; charset=utf-8');return;}
     const ms=Math.max(2,Math.min(15,Number(args.deepseek_wait)||8))*1000;
     timer=setTimeout(()=>{log('翻译超时，返回英文 CC');send(body,'text/vtt; charset=utf-8');},ms);
     $httpClient.post({url:'https://api.deepseek.com/chat/completions',timeout:ms-300,insecure:false,'auto-redirect':false,'auto-cookie':false,
@@ -354,7 +401,7 @@ const F1Captions = (function () {
           if(error||!response||Number(response.status)!==200)throw Error('API');
           const choice=JSON.parse(text).choices[0];if(choice.finish_reason!=='stop')throw Error('incomplete');
           const values=JSON.parse(choice.message.content).translations;
-          if(!Array.isArray(values)||values.length!==cues.length||values.some(value=>typeof value!=='string'||!value.trim()||value.length>2048||/\r|\n\s*\n|-->/.test(value)))throw Error('format');
+          if(!Array.isArray(values)||values.length!==cues.length||values.some(value=>typeof value!=='string'||!value.trim()||value.length>2048||/\r|\n\s*\n|-->/.test(value))||!values.some(value=>/[\u3400-\u9fff]/.test(value)))throw Error('format');
           for(let i=0;i<cues.length;i++)chunks[cues[i].index]=cues[i].prefix+'\n'+values[i].trim();
           const translated=chunks.join('\n\n')+'\n\n';
           write(cacheKey,{url:record.url,model,original:body,body:translated});log('已翻译 CC '+values.length+' 条');send(translated,'text/vtt; charset=utf-8');
