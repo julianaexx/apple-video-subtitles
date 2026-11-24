@@ -128,12 +128,9 @@ def pinned_source(url):
     return raw.decode("utf-8").replace("\r\n", "\n")
 
 
-def generate(local_catalog=LOCAL_CATALOG):
-    metadata, hosts, rules = parse_module(SOURCE.read_text(encoding="utf-8-sig"))
-    custom_rules, custom_hosts, _ = compile_catalog(local_catalog)
-    # Validate every pinned resource, including the response script, before writing.
-    for url in sorted({rule.options["script-path"] for rule in rules}):
-        pinned_source(url)
+def static_catalog():
+    """Use the same pinned catalog for the jq base and unified JS runtime."""
+    _, _, rules = parse_module(SOURCE.read_text(encoding="utf-8-sig"))
     response = next(rule for rule in rules if rule.options["type"] == "http-response")
     source = pinned_source(response.options["script-path"])
     catalog = {}
@@ -143,6 +140,20 @@ def generate(local_catalog=LOCAL_CATALOG):
         if not match:
             raise ValueError(f"UTS catalog changed: missing {name}; review the Loon rewrite")
         catalog[key] = json.loads(match[1])
+    # Preview injection needs only these fields, not the large recorded manifests.
+    catalog['previews'] = [{key: row[key] for key in ('referenceId', 'masterPath', 'revision')}
+                           for row in catalog['previews']]
+    return catalog
+
+
+def generate(local_catalog=LOCAL_CATALOG):
+    metadata, hosts, rules = parse_module(SOURCE.read_text(encoding="utf-8-sig"))
+    custom_rules, custom_hosts, _ = compile_catalog(local_catalog)
+    # Validate every pinned resource, including the response script, before writing.
+    for url in sorted({rule.options["script-path"] for rule in rules}):
+        pinned_source(url)
+    response = next(rule for rule in rules if rule.options["type"] == "http-response")
+    catalog = static_catalog()
     template = (ROOT / "tools/loon-uts.jq").read_text(encoding="utf-8")
     jq = " ".join(line.strip() for line in template.splitlines() if line.strip())
     jq = jq.replace("__CATALOG__", json.dumps(catalog, ensure_ascii=False, separators=(",", ":")))

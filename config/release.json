@@ -1,15 +1,4 @@
 {
-  "version": 1,
-  "fitness_script_url": "https://cdn.jsdelivr.net/gh/julianaexx/apple-video-subtitles@c9ef73f4219628f57d7419151fe7c16083ccde99/scripts/fitness-deepseek.js",
-  "f1_script_url": "https://cdn.jsdelivr.net/gh/julianaexx/apple-video-subtitles@15dafa39bb06c472d8e0d656d3ea00adf8890e02/scripts/f1-cc-deepseek.js",
-  "static_courses": [
-    {
-      "ids": {
-        "id": "625530555",
-        "a": "1686796699"
-      },
-      "donor": "https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/af/a4/4f/afa44f55-c8b4-edb6-79f4-c8d69a8cd223/P625530555_A1686796699_en_subtitles_V2.m3u8",
-      "subtitle_base": "https://cdn.jsdelivr.net/gh/julianaexx/apple-video-subtitles@df59d8c753cd0ee2dc99c5954699229bb7d8e479/subtitles/fitness/1686796699/zh-Hans"
-    }
-  ]
+  "version": 2,
+  "runtime_base_url": "https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/scripts"
 }

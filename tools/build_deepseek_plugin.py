@@ -23,23 +23,23 @@ def build(base, script_url):
     at = lines.index("[Script]") + 1
     args = ',argument={deepseek_key,deepseek_model,deepseek_wait},enable=true'
     lines[at:at] = [
-        '# Generic Fitness+ English WebVTT tracks. API key stays in local plugin arguments.',
-        r'http-response ^https:\/\/play\.itunes\.apple\.com\/WebObjects\/MZPlay\.woa\/hls\/fitness\/playlist\.m3u8(?:\?.*)?$ '
-        + 'script-path=' + script_url + ',requires-body=true,max-size=0,timeout=2,tag=Fitness.DeepSeek.Master' + args,
-        r'http-response ^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_./-]*P\d+_A\d+_en_subtitles[^/?#]*\.m3u8\?(?:[^#]*&)?__loon_fitness_zh=1(?:&[^#]*)?$ '
-        + 'script-path=' + script_url + ',requires-body=true,max-size=0,timeout=2,tag=Fitness.DeepSeek.Playlist' + args,
-        r'http-response ^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_./-]*P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)\?(?:[^#]*&)?__loon_fitness_zh=1(?:&[^#]*)?$ '
-        + 'script-path=' + script_url + ',requires-body=true,max-size=0,timeout=18,tag=Fitness.DeepSeek.VTT' + args,
+        '# Native Fitness+ English captions display Chinese and English in the existing track.',
+        r'http-response ^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_./-]*P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?$ '
+        + 'script-path=' + script_url + ',requires-body=true,max-size=65536,timeout=18,tag=Fitness.DeepSeek.VTT' + args,
         r'http-request ^https:\/\/hls-svod\.itunes\.apple\.com\/__loon_fitness_deepseek\/v1\/(?:index\.m3u8|segment\.vtt)\?src=[^&]+$ '
         + 'script-path=' + script_url + ',timeout=2,tag=Fitness.DeepSeek.LegacyRedirect' + args,
         '',
     ]
     hostname = next(i for i, line in enumerate(lines) if line.startswith('hostname = '))
-    for host in ('play.itunes.apple.com', 'hls-svod.itunes.apple.com'):
+    for host in ('hls-svod.itunes.apple.com',):
         if host not in lines[hostname].partition(' = ')[2].split(', '):
             lines[hostname] += ', ' + host
+    # Reject unsafe custom bases rather than silently retaining Music interception.
+    hosts = lines[hostname].partition(' = ')[2].split(', ')
+    if 'play.itunes.apple.com' in hosts:
+        raise ValueError('Music-safe build must not intercept play.itunes.apple.com')
     lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ DeepSeek'
-    lines[1] = '#!desc=20261123d；恢复 Fitness+ 中文字幕自动选择及辅助字幕属性；使用原生下载，翻译超时放行英文'
+    lines[1] = '#!desc=20261124a；Fitness+ 选择英文字幕显示中英双语；移除 Music 冲突域名解密；翻译超时放行英文'
     return '\n'.join(lines) + '\n'
 
 

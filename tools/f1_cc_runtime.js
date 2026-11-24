@@ -1,6 +1,6 @@
 // Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261123b', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261124a', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const model=String(args.deepseek_model || 'deepseek-flash');
   let done=false,timer=null;
@@ -68,7 +68,7 @@
       if(!node||typeof node!=='object')return;
       const meta=node.canonicalMetadata||{};
       const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1';
-      if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType!=='Live'){
+      if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){
         const source=node.assets.hlsUrl,key=identity(source);
         // Keep FairPlay certificate, nonce and license URLs exactly as Apple sent them.
         if(key&&masterSource(source)&&/^sk-[A-Za-z0-9_-]+$/.test(String(args.deepseek_key||'').trim())){
@@ -80,8 +80,18 @@
       }
       for(const key of Object.keys(node))walk(node[key],f1);
     }
-    const data=JSON.parse(body);walk(data,false);
-    log('节目接口识别 F1 回放 '+changed+' 项，许可证地址不改写');
+    const data=JSON.parse(body);
+    function staticWalk(node){
+      if(!node||typeof node!=='object')return;
+      for(const key of Object.keys(node)){
+        if(key==='hlsUrl'&&typeof node[key]==='string'){
+          const target=appleStaticPlayback(node[key]);
+          if(target!==node[key]){node[key]=target;changed++;}
+        }else staticWalk(node[key]);
+      }
+    }
+    staticWalk(data);walk(data,false);
+    log('静态字幕/F1 回放路由 '+changed+' 项，许可证地址不改写');
     return changed?JSON.stringify(data):null;
   }
   function master(body,base){
@@ -107,7 +117,7 @@
       const key=hash(value.source.split('?')[0]);value.key=key;value.group='f1-ai-'+key;
       // Caption content is shared by video renditions. Use one low-bandwidth
       // caption source per pathway so quality switches retain the subtitle group.
-      let row='#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="'+value.group+'",NAME="简体中文（F1 DeepSeek 实验）",LANGUAGE="zh-Hans",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,STABLE-RENDITION-ID="f1-ai-'+hash(registered.identity)+'",URI="'+resource(key,'index.m3u8')+'"';
+      let row='#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="'+value.group+'",NAME="简体中文（F1 AI 实验）",LANGUAGE="zh-Hans",DEFAULT=NO,AUTOSELECT=YES,FORCED=NO,STABLE-RENDITION-ID="f1-ai-'+hash(registered.identity)+'",URI="'+resource(key,'index.m3u8')+'"';
       if(pathway!=='default')row+=',PATHWAY-ID='+JSON.stringify(pathway);
       rows.push(row);
     }
@@ -119,9 +129,9 @@
     if(!rows.length)return null;
     // Register only after every variant has passed validation.
     for(const value of groups.values()){
-      write('registry-'+value.key,{source:value.source,at:Date.now()});
+      if(!write('registry-'+value.key,{source:value.source,at:Date.now()}))return null;
       const root=value.source.split('?')[0].replace(/\/[^/]+$/,'');
-      write('stream-'+hash(root),{root,at:Date.now()});
+      if(!write('stream-'+hash(root),{root,at:Date.now()}))return null;
     }
     lines.splice(1,0,...rows);
     // The bridge has a different origin/path: resolve every native media/key URI.
@@ -161,12 +171,17 @@
     const root=source.split('?')[0].replace(/\/[^/]+$/,'');
     const registration=read('stream-'+hash(root));
     if(!registration||registration.root!==root||Date.now()-registration.at>14400000)return null;
-    const stateKey='state-'+hash(root),state=read(stateKey);
+    const cached=read(slot(source));
+    if(cached&&cached.url===source.split('?')[0]&&Date.now()-cached.at<14400000)return cached;
     const data=F1Captions.extract(bytes);
     if(!Number.isFinite(data.duration)||data.duration<=0||data.duration>20)return null;
-    const decoded=F1Captions.decode(data,state&&state.root===root?state.value:null);
+    // State belongs to a media timestamp, not request arrival order. Concurrent
+    // pathways, repeated downloads and backward seeks must not rewind one shared decoder.
+    const stateSlot=time=>'state-'+(parseInt(hash(root+':'+Math.round(time*1000)),16)%128);
+    const state=read(stateSlot(data.origin));
+    const decoded=F1Captions.decode(data,state&&state.root===root&&Date.now()-state.at<14400000?state.value:null);
     const original=F1Captions.webvtt(data,decoded.cues);
-    write(stateKey,{root,value:decoded.state});
+    write(stateSlot(data.origin+data.duration),{root,value:decoded.state,at:Date.now()});
     const record={url:source.split('?')[0],body:original,at:Date.now()};
     write(slot(source),record);
     // Avoid binary payload and caption text in logs.
@@ -180,9 +195,9 @@
       const row=chunks[i].split('\n');if(row.length>=3&&row[1].includes('-->'))cues.push({index:i,prefix:row.slice(0,2).join('\n'),text:row.slice(2).join('\n')});
     }
     const cacheKey='zh-'+(parseInt(hash(record.url+model),16)%128),cache=read(cacheKey);
-    if(cache&&cache.url===record.url&&cache.model===model&&cache.original===body){send(cache.body,'text/vtt; charset=utf-8');return;}
     const key=String(args.deepseek_key||'').trim();
     if(!cues.length||cues.length>60||!/^sk-[A-Za-z0-9_-]+$/.test(key)){send(body,'text/vtt; charset=utf-8');return;}
+    if(cache&&cache.url===record.url&&cache.model===model&&cache.original===body){send(cache.body,'text/vtt; charset=utf-8');return;}
     const ms=Math.max(2,Math.min(15,Number(args.deepseek_wait)||8))*1000;
     timer=setTimeout(()=>{log('翻译超时，返回英文 CC');send(body,'text/vtt; charset=utf-8');},ms);
     $httpClient.post({url:'https://api.deepseek.com/chat/completions',timeout:ms-300,insecure:false,'auto-redirect':false,'auto-cookie':false,
@@ -196,7 +211,7 @@
           if(error||!response||Number(response.status)!==200)throw Error('API');
           const choice=JSON.parse(text).choices[0];if(choice.finish_reason!=='stop')throw Error('incomplete');
           const values=JSON.parse(choice.message.content).translations;
-          if(!Array.isArray(values)||values.length!==cues.length||values.some(value=>typeof value!=='string'||!value.trim()||value.length>2048||/\r|\n\s*\n|-->/.test(value)))throw Error('format');
+          if(!Array.isArray(values)||values.length!==cues.length||values.some(value=>typeof value!=='string'||!value.trim()||value.length>2048||/\r|\n\s*\n|-->/.test(value))||!values.some(value=>/[\u3400-\u9fff]/.test(value)))throw Error('format');
           for(let i=0;i<cues.length;i++)chunks[cues[i].index]=cues[i].prefix+'\n'+values[i].trim();
           const translated=chunks.join('\n\n')+'\n\n';
           write(cacheKey,{url:record.url,model,original:body,body:translated});log('已翻译 CC '+values.length+' 条');send(translated,'text/vtt; charset=utf-8');

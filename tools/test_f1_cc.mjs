@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {pinnedSource} from './upstream_source.mjs';
 const decoder=readFileSync(new URL('./f1_cc608.js',import.meta.url),'utf8');
-const runtime=decoder+'\n'+readFileSync(new URL('./f1_cc_runtime.js',import.meta.url),'utf8');
+const runtime=readFileSync(new URL('../build/scripts/f1-cc-deepseek.js',import.meta.url),'utf8');
 const library={Uint8Array};vm.runInNewContext(decoder+'\nthis.cc=F1Captions;',library);
 const u32=n=>{const b=Buffer.alloc(4);b.writeUInt32BE(n);return b;};
 const box=(type,...data)=>{const body=Buffer.concat(data);return Buffer.concat([u32(body.length+8),Buffer.from(type),body]);};
@@ -22,12 +23,12 @@ assert.ok(library.cc.webvtt(data,decoded.cues).includes('00:00:00.000 --> 00:00:
 assert.throws(()=>library.cc.extract(binary.slice(0,-2)));
 
 const store=new Map(),calls=[];
-function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false}={}){
+function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false}={}){
   const results=[],timers=new Map();let at=0,late=null;
   vm.runInNewContext(runtime,{
     Uint8Array,$request:{url,headers:{'User-Agent':'AppleCoreMedia test',Authorization:'apple-secret',Cookie:'account-secret'}},...(!request?{$response:{status:200,body}}:{}),
-    $argument:{deepseek_key:'sk-testonly',deepseek_model:'deepseek-flash',deepseek_wait:8},
-    $persistentStore:{read:key=>store.get(key),write(value,key){store.set(key,value);return true;}},
+    $argument:{deepseek_key:key,deepseek_model:'deepseek-flash',deepseek_wait:8},
+    $persistentStore:{read:key=>store.get(key),write(value,key){if(storageFails)return false;store.set(key,value);return true;}},
     console:{log(){}},$done:value=>results.push(value),setTimeout(fn){timers.set(++at,fn);return at;},clearTimeout(id){timers.delete(id);},
     $httpClient:{get(options,callback){
       assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.Cookie,undefined);
@@ -39,6 +40,8 @@ function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,
     },post(options,callback){
       calls.push(options);assert.equal(options.url,'https://api.deepseek.com/chat/completions');
       const texts=JSON.parse(JSON.parse(options.body).messages[1].content).subtitles;
+      if(apiHangs)return;
+      if(apiMalformed){callback(null,{status:200},'invalid');return;}
       callback(apiFails?'network':null,{status:apiFails?500:200},JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:texts.map(()=>'你好')})}}]}));
     }},
   },{timeout:1000});
@@ -59,7 +62,7 @@ assert.equal(rewrite.data.playables[0].assets.fpsKeyServerUrl,keyServer,'FairPla
 const bridge=rewrite.data.playables[0].assets.hlsUrl;
 assert.ok(bridge.includes('/master.m3u8'));
 const output=run(bridge,null,{request:true,sources:{[masterURL]:master}}).response.body;
-assert.ok(output.includes('简体中文（F1 DeepSeek 实验）'));
+assert.ok(output.includes('简体中文（F1 AI 实验）'));
 assert.ok(output.includes('CODECS="avc1,wvtt"'));
 assert.ok(output.includes(stream+'index.m3u8'));
 assert.equal(calls.length,0);
@@ -104,11 +107,67 @@ for(const row of recorded.variants){const data=JSON.parse(row);restored.push('#E
 for(const row of recorded.iframe){const data=JSON.parse(row);restored.push('#EXT-X-I-FRAME-STREAM-INF:'+attributes({...data.attrs,URI:'https://'+data.uri}));}
 const actualMaster=restored.join('\n')+'\n';
 const realResult=run(bridge,null,{request:true,sources:{[masterURL]:actualMaster}}).response.body;
-assert.ok(realResult.includes('F1 DeepSeek 实验'));
+assert.ok(realResult.includes('F1 AI 实验'));
 assert.equal((realResult.match(/TYPE=SUBTITLES/g)||[]).length,3,'one shared CC track per recorded Apple pathway');
 assert.equal((realResult.match(/#EXT-X-STREAM-INF:/g)||[]).length,recorded.variants.length);
 for(const row of restored.filter(line=>line.startsWith('#EXT-X-MEDIA:')))assert.ok(realResult.includes(row),'existing audio and CC must stay exact');
 console.log('Recorded Apple master structure passed: all video/audio/iframe renditions retained; CC grouped across three CDN pathways.');
+
+// Exercise the exact release dispatcher, with the generated static catalog.
+const catalog=JSON.parse(/^const APPLE_STATIC_CATALOG = (.+);$/m.exec(runtime)[1]);
+const staticURLs=[
+  ...Object.keys(catalog.movies).map(a=>'https://play.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?a='+a),
+  ...Object.keys(catalog.series).map(a=>'https://play-edge-cdn.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?a='+a),
+  ...catalog.replays.map(row=>'https://play.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?id='+row.programId+'&a='+row.assetId),
+  ...catalog.previews.map(row=>'https://linear.tv.apple.com/v1/hls/playlist.m3u8?referenceId='+row.referenceId),
+  'https://example.com/?a=6822052354', 'not a URL',
+];
+const staticInput={rows:staticURLs.map(hlsUrl=>({hlsUrl})),keep:{hlsUrl:null}};
+let expectedStatic;
+vm.runInNewContext(pinnedSource('b14a2fd842d6869ab64e1bd71db6f42319a685f0',
+  'payloads/surge/series/2019-formula-1-drive-to-survive/season-08/uts-redirect.js'),{
+  URL,$response:{body:JSON.stringify(staticInput)},$done:value=>expectedStatic=JSON.parse(value.body),
+});
+const uts='https://uts-api.itunes.apple.com/uts/v3/sporting-events/generic';
+assert.deepEqual(JSON.parse(run(uts,JSON.stringify(staticInput),{key:''}).body),expectedStatic,
+  'all static movies, series, previews and replays must match the pinned upstream routing');
+const registeredStatic={canonicalMetadata:{leagueShortName:'F1'},airingType:'OnDemand',assets:{
+  hlsUrl:staticURLs.find(url=>url.includes('id=1337486392')),fpsKeyServerUrl:keyServer,
+}};
+const routed=JSON.parse(run(uts,JSON.stringify(registeredStatic)).body);
+assert.ok(routed.assets.hlsUrl.includes('/__f1_replay_master/'),'static F1 subtitles take priority over AI');
+assert.equal(routed.assets.fpsKeyServerUrl,keyServer);
+for(const change of [{airingType:'Live'},{airingType:undefined},{canonicalMetadata:{leagueShortName:'NFL'}}]){
+  const value={...metadata.data.playables[0],...change};
+  assert.deepEqual(run(uts,JSON.stringify(value)),{},'live, unknown airing types and non-F1 pass through');
+}
+assert.deepEqual(run(uts,JSON.stringify(metadata),{key:''}),{});
+assert.deepEqual(run(uts,JSON.stringify(metadata),{storageFails:true}),{});
+assert.equal(run(bridge,null,{request:true,sources:{[masterURL]:master},storageFails:true}).response.status,302);
+// Refresh registration after deliberately failing storage.
+run(bridge,null,{request:true,sources:{[masterURL]:master}});
+function clearTranslations(){for(const key of [...store.keys()])if(key.startsWith('f1cc-zh-'))store.delete(key);}
+clearTranslations();
+assert.ok(run(segmentURL,null,{request:true,apiFails:true}).response.body.includes('HELLO'));
+assert.ok(run(segmentURL,null,{request:true,apiMalformed:true}).response.body.includes('HELLO'));
+assert.ok(run(segmentURL,null,{request:true,apiHangs:true,fireDeadline:true}).response.body.includes('HELLO'));
+// Fragment time, not request order, determines decoder continuity.
+function timedBinary(origin){
+  const index=box('sidx',u32(0),u32(1),u32(1000),u32(origin),u32(0),u32(0));
+  const time=box('tfdt',u32(0),u32(origin));
+  let fragment=box('moof',box('traf',tfhd,time,trun(0)));
+  fragment=box('moof',box('traf',tfhd,time,trun(fragment.length+8)));
+  return new Uint8Array(Buffer.concat([index,fragment,box('mdat',packet)]));
+}
+run(stream+'Segment(1).m4v',timedBinary(6000));
+const recordsBefore=JSON.stringify([...store].filter(([key])=>key.startsWith('f1cc-state-')));
+run(stream+'Segment(0).m4v',binary);
+assert.equal(JSON.stringify([...store].filter(([key])=>key.startsWith('f1cc-state-'))),recordsBefore,
+  'duplicate older fragments must not rewind or reprocess decoder state');
+run(stream+'Segment(3).m4v',timedBinary(18000));
+run(stream+'Segment(2).m4v',timedBinary(12000));
+assert.ok([...store.values()].some(value=>{const row=JSON.parse(value);return row.url===stream+'Segment(2).m4v'&&row.body.includes('MPEGTS:1080000');}));
+console.log('Unified release routing passed: static priority, Music-safe Fitness, CC retries/seeks, API failures and playback fallbacks.');
 
 // Optional private real-capture regression; never published with the runtime.
 const sanitized=new URL('../tests/fixtures/f1-clear-caption-packets.json',import.meta.url);

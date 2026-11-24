@@ -1,16 +1,14 @@
-// Fitness+ HLS WebVTT -> DeepSeek -> Chinese sidecar. No embedded credentials.
+// Fitness+ native English WebVTT -> DeepSeek -> bilingual cues. No embedded credentials.
 (function () {
-  const HOST = 'hls-svod.itunes.apple.com';
   const API = 'https://api.deepseek.com/chat/completions';
-  const CACHE_VERSION = 'fitness-ds-1';
+  const CACHE_VERSION = 'fitness-ds-bilingual-2';
   let finished = false;
   let deadlineTimer = null;
   const args = typeof $argument === 'object' && $argument ? $argument : {};
   const key = String(args.deepseek_key || '').trim();
   const model = String(args.deepseek_model || 'deepseek-flash').trim();
   const waitSeconds = Math.max(2, Math.min(15, Number(args.deepseek_wait) || 8));
-  const VERSION = '20261123d';
-  const MARKER = '__loon_fitness_zh=1';
+  const VERSION = '20261124a';
   console.log('Fitness+ DeepSeek ' + VERSION + ': ' + (typeof $response === 'undefined' ? 'legacy redirect' : 'native response'));
 
   function finish(value) {
@@ -34,13 +32,6 @@
     finish({ response: { status: status || 200,
       headers: { 'Content-Type': type, 'Cache-Control': 'no-store' }, body } });
   }
-  function attrs(line) {
-    const output = {}, regex = /(?:^|,)([A-Z0-9-]+)=(?:"([^"]*)"|([^,]*))/g;
-    let match;
-    const value = line.slice(line.indexOf(':') + 1);
-    while ((match = regex.exec(value))) output[match[1]] = match[2] === undefined ? match[3] : match[2];
-    return output;
-  }
   function allowed(value, extension) {
     const match = /^https:\/\/hls-svod\.itunes\.apple\.com(\/itunes-assets\/[A-Za-z0-9_./-]+)(?:\?[^\s#]*)?$/.exec(value);
     if (!match || match[1].split('/').includes('..')) return false;
@@ -48,9 +39,6 @@
     const pattern = extension === 'playlist' ? /^P\d+_A\d+_en_subtitles[^/]*\.m3u8$/
       : /^P\d+_A\d+_en_subtitles[^/]*-\d+\.(?:webvtt|vtt)$/;
     return pattern.test(name);
-  }
-  function bridge(source, kind) {
-    return source + (source.includes('?') ? '&' : '?') + MARKER;
   }
   function sourceURL(value) {
     const match = /^https:\/\/hls-svod\.itunes\.apple\.com\/__loon_fitness_deepseek\/v1\/(index\.m3u8|segment\.vtt)\?src=([^&]+)$/.exec(value);
@@ -60,71 +48,6 @@
       const kind = match[1] === 'index.m3u8' ? 'playlist' : 'segment';
       return allowed(src, kind) ? { src, kind } : null;
     } catch (_) { return null; }
-  }
-  function absolute(uri, base) {
-    if (/^https:\/\//.test(uri)) return uri;
-    if (uri.startsWith('/')) return 'https://' + HOST + uri;
-    if (/^[A-Za-z0-9_.-]+(?:\?[^\s#]*)?$/.test(uri)) return base.split('?')[0].replace(/[^/]+$/, '') + uri;
-    return null;
-  }
-  function inject(body) {
-    if (typeof body !== 'string' || !body.startsWith('#EXTM3U') || !body.includes('#EXT-X-STREAM-INF:')) return null;
-    const lines = body.replace(/\r/g, '').split('\n');
-    const media = lines.filter(line => line.startsWith('#EXT-X-MEDIA:')).map(line => ({...attrs(line), line}));
-    if (media.some(track => track.TYPE === 'SUBTITLES' && /^zh(?:-|$)/i.test(track.LANGUAGE || ''))) return null;
-    const variants = lines.filter(line => line.startsWith('#EXT-X-STREAM-INF:')).map(attrs);
-    if (variants.some(row => !row.SUBTITLES)) return null;
-    const added = new Set(), tracks = [];
-    for (const variant of variants) {
-      const donor = media.find(row => row.TYPE === 'SUBTITLES' && row['GROUP-ID'] === variant.SUBTITLES
-        && /^en(?:-|$)/i.test(row.LANGUAGE || '') && row.FORCED !== 'YES'
-        && (!row['PATHWAY-ID'] || row['PATHWAY-ID'] === variant['PATHWAY-ID']) && allowed(row.URI || '', 'playlist'));
-      if (!donor) return null;
-      const identity = JSON.stringify([donor['GROUP-ID'], donor['PATHWAY-ID']]);
-      if (added.has(identity)) continue;
-      added.add(identity);
-      // Preserve Apple's accessibility and pathway metadata. Fitness+ may choose
-      // subtitle renditions through iOS caption preferences rather than TV UI.
-      function set(row, name, value, quoted) {
-        const expression = new RegExp('(^|,)' + name + '=(?:"[^"]*"|[^,]*)');
-        const rendered = name + '=' + (quoted ? JSON.stringify(value) : value);
-        return expression.test(row) ? row.replace(expression, (_, comma) => comma + rendered) : row + ',' + rendered;
-      }
-      let row = donor.line;
-      row = set(row, 'LANGUAGE', 'zh-Hans', true);
-      row = set(row, 'NAME', '简体中文（DeepSeek）', true);
-      row = set(row, 'AUTOSELECT', 'YES', false);
-      row = set(row, 'DEFAULT', 'NO', false);
-      row = set(row, 'FORCED', 'NO', false);
-      row = set(row, 'STABLE-RENDITION-ID', 'fitness-deepseek-zh-' + hash(donor.URI), true);
-      row = set(row, 'URI', bridge(donor.URI, 'playlist'), true);
-      tracks.push(row);
-    }
-    lines.splice(1, 0, ...tracks);
-    console.log('Fitness+ DeepSeek ' + VERSION + ': 已注入 ' + tracks.length + ' 条中文轨，AUTOSELECT=YES，保留辅助字幕属性');
-    return lines.join('\n');
-  }
-  function unmarked(url) {
-    const at = url.indexOf('?');
-    if (at < 0) return null;
-    const fields = url.slice(at + 1).split('&');
-    if (fields.filter(value => value === MARKER).length !== 1) return null;
-    const query = fields.filter(value => value !== MARKER).join('&');
-    return url.slice(0, at) + (query ? '?' + query : '');
-  }
-  function playlist(body, source) {
-    if (!body.startsWith('#EXTM3U') || !body.includes('#EXTINF:')
-        || /^#EXT-X-(?:KEY|MAP|BYTERANGE|PART|SKIP):/m.test(body)) return null;
-    const sourceName = source.split('?')[0].split('/').pop().replace(/\.m3u8$/, '');
-    const lines = body.replace(/\r/g, '').split('\n');
-    let count = 0;
-    for (let index = 0; index < lines.length; index++) {
-      if (!lines[index] || lines[index].startsWith('#')) continue;
-      const url = absolute(lines[index], source);
-      if (!url || !allowed(url, 'segment') || !url.split('?')[0].split('/').pop().startsWith(sourceName + '-')) return null;
-      lines[index] = bridge(url, 'segment'); count++;
-    }
-    return count ? lines.join('\n') : null;
   }
   function parseVTT(body) {
     const blocks = body.replace(/^\ufeff/, '').replace(/\r\n?/g, '\n').trimEnd().split(/\n{2,}/);
@@ -150,6 +73,9 @@
       warn('字幕格式或分片大小暂不支持，返回英文'); finish({}); return;
     }
     if (!parsed.cues.length) { finish({}); return; }
+    if (!/^sk-[A-Za-z0-9_-]+$/.test(key)) {
+      warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return;
+    }
     const identity = CACHE_VERSION + ':' + model + ':' + source.split('?')[0];
     const slot = 'fitness-ds-cache-' + (hash(identity) % 128);
     try {
@@ -158,9 +84,6 @@
         console.log('Fitness+ DeepSeek ' + VERSION + ': 缓存命中'); finish({body:cached.translated}); return;
       }
     } catch (_) { /* Cache is optional. */ }
-    if (!/^sk-[A-Za-z0-9_-]+$/.test(key)) {
-      warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return;
-    }
     const texts = parsed.cues.map(row => row.text);
     const request = {
       model, thinking: { type: 'disabled' }, stream: false, temperature: 0.1, max_tokens: 4096,
@@ -195,7 +118,7 @@
               || value.length > 2048 || /\r|\n\s*\n/.test(value))
             || !translated.some(value => /[\u3400-\u9fff]/.test(value))) throw new Error('invalid');
         for (let i = 0; i < parsed.cues.length; i++) {
-          const cue = parsed.cues[i]; parsed.blocks[cue.index] = cue.prefix + '\n' + translated[i].trim();
+          const cue = parsed.cues[i]; parsed.blocks[cue.index] = cue.prefix + '\n' + translated[i].trim() + '\n' + cue.text;
         }
         const result = parsed.blocks.join('\n\n') + '\n\n';
         try { $persistentStore.write(JSON.stringify({ identity, original: body, translated: result }), slot); } catch (_) { /* Optional. */ }
@@ -210,27 +133,11 @@
   try {
     if (typeof $response !== 'undefined') {
       if (Number($response.status) !== 200) { finish({}); return; }
-      const source = unmarked($request.url);
-      if (source) {
-        if (allowed(source, 'playlist')) {
-          const body = typeof $response.body === 'string' ? $response.body.replace(/^\ufeff/, '').trimStart() : '';
-          const output = playlist(body, source);
-          if (output) {
-            console.log('Fitness+ DeepSeek ' + VERSION + ': 原生字幕列表改写成功');
-            finish({body:output});
-          } else {
-            warn('原生字幕列表格式暂不支持，放行原英文字幕');
-            finish({});
-          }
-        } else if (allowed(source, 'segment') && typeof $response.body === 'string') {
-          console.log('Fitness+ DeepSeek ' + VERSION + ': 原生字幕分片已收到');
-          translate($response.body, source);
-        } else finish({});
-      } else {
-        if (!key) { warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return; }
-        const output = inject($response.body);
-        finish(output ? {body:output} : {});
-      }
+      // Only native Fitness+ English caption files are translated. The master
+      // stays native, so play.itunes.apple.com does not need TLS interception.
+      if (allowed($request.url, 'segment') && typeof $response.body === 'string') {
+        translate($response.body, $request.url);
+      } else finish({});
     } else {
       // Compatibility only: old player sessions may still request the synthetic
       // v1 URLs. Redirect immediately; do not download or retry inside the script.
