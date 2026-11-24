@@ -13,7 +13,8 @@ def release_files(config_path):
     config = json.loads(config_path.read_text(encoding='utf-8'))
     files, _ = generate()
     base = files['apple-video-subtitles.plugin']
-    fitness = (ROOT/'tools/fitness_deepseek.js').read_text(encoding='utf-8')
+    fitness = ((ROOT/'tools/translation_service.js').read_text(encoding='utf-8') + '\n'
+               + (ROOT/'tools/fitness_deepseek.js').read_text(encoding='utf-8'))
     f1_runtime = runtime()
     # Content-addressed filenames prevent a newly imported plugin from silently
     # downloading the old runtime before the release files have been published.

@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {pinnedSource} from './upstream_source.mjs';
 const decoder=readFileSync(new URL('./f1_cc608.js',import.meta.url),'utf8');
 const runtime=readFileSync(new URL('../build/scripts/f1-cc-deepseek.js',import.meta.url),'utf8');
+const runtimeVersion=/const VERSION='([^']+)'/.exec(runtime)[1];
 const library={Uint8Array};vm.runInNewContext(decoder+'\nthis.cc=F1Captions;',library);
 const u32=n=>{const b=Buffer.alloc(4);b.writeUInt32BE(n);return b;};
 const box=(type,...data)=>{const body=Buffer.concat(data);return Buffer.concat([u32(body.length+8),Buffer.from(type),body]);};
@@ -23,12 +24,12 @@ assert.ok(library.cc.webvtt(data,decoded.cues).includes('00:00:00.000 --> 00:00:
 assert.throws(()=>library.cc.extract(binary.slice(0,-2)));
 
 const store=new Map(),calls=[];
-function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false,f1Wait,apiDelay=0,apiResponses=[],throwAPI=false,onPost=null,deferSingles=false}={}){
+function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false,f1Wait,apiDelay=0,apiResponses=[],throwAPI=false,onPost=null,deferSingles=false,providerArgs={}}={}){
   const results=[],timers=new Map();let at=0,late=null,latePost=null,posts=0,clockNow=Date.now();
   const deferred=[];
   vm.runInNewContext(runtime,{
-    Date:{now:()=>clockNow},Uint8Array,$request:{url,headers:{'User-Agent':'AppleCoreMedia test',Authorization:'apple-secret',Cookie:'account-secret'}},...(!request?{$response:{status:200,body}}:{}),
-    $argument:{deepseek_key:key,deepseek_model:'deepseek-flash',deepseek_wait:8,...(f1Wait===undefined?{}:{f1_wait:f1Wait})},
+    Date:class extends Date {static now(){return clockNow;}},Uint8Array,$request:{url,headers:{'User-Agent':'AppleCoreMedia test',Authorization:'apple-secret',Cookie:'account-secret'}},...(!request?{$response:{status:200,body}}:{}),
+    $argument:{deepseek_key:key,deepseek_model:'deepseek-flash',deepseek_wait:8,...(f1Wait===undefined?{}:{f1_wait:f1Wait}),...providerArgs},
     $persistentStore:{read:key=>store.get(key),write(value,key){if(storageFails)return false;store.set(key,value);return true;}},
     console:{log(){}},$done:value=>results.push(value),setTimeout(fn){timers.set(++at,fn);return at;},clearTimeout(id){timers.delete(id);},
     $httpClient:{get(options,callback){
@@ -39,10 +40,12 @@ function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,
         ?callback(null,{status:200},sources[options.url]):callback('network timeout',null,null);
       if(!hangSource)late();
     },post(options,callback){
-      calls.push(options);assert.equal(options.url,'https://api.deepseek.com/chat/completions');
-      const entries=JSON.parse(JSON.parse(options.body).messages[1].content).subtitles;
+      calls.push(options);
+      const volc=providerArgs.translation_provider==='volcengine';
+      assert.equal(options.url,volc?'https://translate.volcengineapi.com/?Action=TranslateText&Version=2020-06-01':'https://api.deepseek.com/chat/completions');
+      const entries=volc?JSON.parse(options.body).TextList.map((text,id)=>({id,text})):JSON.parse(JSON.parse(options.body).messages[1].content).subtitles;
       const texts=entries.map(row=>row.text);
-      const indexed=()=>({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:Object.fromEntries(entries.map(row=>[row.id,translation]))})}}]});
+      const indexed=()=>volc?{TranslationList:entries.map(()=>({Translation:translation}))}:{choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:Object.fromEntries(entries.map(row=>[row.id,translation]))})}}]};
       posts++;
       if(onPost)onPost(posts,texts);
       if(throwAPI)throw Error('client unavailable');
@@ -234,7 +237,7 @@ assert.ok(run(secondURL,null,{request:true,sources:{
 const slotHash=text=>{let value=2166136261;for(let i=0;i<text.length;i++)value=Math.imul(value^text.charCodeAt(i),16777619);return(value>>>0).toString(16);};
 const mixedSource=stream+'Segment(20).m4v';
 store.set('f1cc-segment-'+(parseInt(slotHash(mixedSource),16)%128),JSON.stringify({
-  version:'f1cc-20261124d',url:mixedSource,at:Date.now(),continued:true,
+  version:runtimeVersion,url:mixedSource,at:Date.now(),continued:true,
   body:'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:0\n\n1\n00:00:00.000 --> 00:00:01.000\nHELLO\n\n2\n00:00:01.000 --> 00:00:02.000\nNEW SENTENCE\n\n',
 }));
 const mixedURL=segmentURL.replace(encodeURIComponent('Segment(0).m4v'),encodeURIComponent('Segment(20).m4v'));
@@ -314,7 +317,7 @@ assert.ok(!concurrentRecovery.includes('HELLO'));assert.ok(!concurrentRecovery.i
 clearTranslations();
 const cappedSource=stream+'Segment(21).m4v';
 store.set('f1cc-segment-'+(parseInt(slotHash(cappedSource),16)%128),JSON.stringify({
-  version:'f1cc-20261124d',url:cappedSource,at:Date.now(),continued:true,
+  version:runtimeVersion,url:cappedSource,at:Date.now(),continued:true,
   body:'WEBVTT\n\n'+Array.from({length:8},(_,i)=>i+'\n00:00:00.000 --> 00:00:01.000\nWORD '+i+'\n\n').join(''),
 }));
 const cappedURL=segmentURL.replace(encodeURIComponent('Segment(0).m4v'),encodeURIComponent('Segment(21).m4v'));
@@ -326,6 +329,41 @@ console.log('Numbered F1 recovery passed: reported 2-to-1 mismatch, reordered/mi
 console.log('F1 fallback checks passed: partial result salvage, targeted retry, English rejection, fenced JSON, independent wait limits and cache migration.');
 console.log('F1 stability checks passed: cross-fragment wording, prefix coalescing, carry-in repair, bounded retry, late callbacks and partial fallback.');
 console.log('Unified release routing passed: static priority, Music-safe Fitness, CC retries/seeks, API failures and playback fallbacks.');
+
+const providerArgs={translation_provider:'volcengine',volc_access_key_id:'AK-test',volc_secret_access_key:'secret-test'};
+assert.ok(JSON.parse(run('https://uts-api.itunes.apple.com/uts/v3/sporting-events/generic',JSON.stringify(metadata),{key:'',providerArgs}).body)
+  .data.playables[0].assets.hlsUrl.includes('/__loon_f1_cc/'),'Volc credentials enable F1 without a DeepSeek key');
+assert.deepEqual(run('https://uts-api.itunes.apple.com/uts/v3/sporting-events/generic',JSON.stringify(metadata),{
+  providerArgs:{...providerArgs,volc_secret_access_key:''},
+}),{},'selected Volc service must not use the available DeepSeek key');
+clearTranslations();
+let beforeVolc=calls.length;
+let volcBody=run(mixedURL,null,{request:true,key:'',providerArgs,translation:'火山译文'}).response.body;
+assert.ok(volcBody.includes('火山译文'));assert.ok(!volcBody.includes('HELLO'));assert.equal(calls.length-beforeVolc,1);
+beforeVolc=calls.length;
+assert.ok(run(mixedURL,null,{request:true,key:'',providerArgs}).response.body.includes('火山译文'));
+assert.equal(calls.length,beforeVolc,'Volc sentence cache reused');
+assert.ok(run(mixedURL,null,{request:true,translation:'独立模型译文'}).response.body.includes('独立模型译文'));
+assert.equal(calls.length,beforeVolc+1,'DeepSeek must not reuse Volc sentence cache');
+clearTranslations();beforeVolc=calls.length;
+volcBody=run(mixedURL,null,{request:true,providerArgs,apiResponses:[{TranslationList:[{Translation:'第一句中文'},null]}]}).response.body;
+assert.ok(volcBody.includes('第一句中文'));assert.ok(volcBody.includes('NEW SENTENCE'));
+assert.equal(calls.length-beforeVolc,1,'malformed translations do not cause a recovery fanout');
+beforeVolc=calls.length;
+volcBody=run(mixedURL,null,{request:true,providerArgs,apiFails:true,apiStatus:401}).response.body;
+assert.ok(volcBody.includes('第一句中文'));assert.ok(volcBody.includes('NEW SENTENCE'));
+assert.equal(calls.length-beforeVolc,1,'unauthorized Volc requests are not retried');
+clearTranslations();
+volcBody=run(mixedURL,null,{request:true,providerArgs,apiResponses:[{TranslationList:[{Translation:'合并结果'}]}]}).response.body;
+assert.ok(volcBody.includes('HELLO'));assert.ok(volcBody.includes('NEW SENTENCE'));assert.ok(!volcBody.includes('合并结果'));
+clearTranslations();beforeVolc=calls.length;
+assert.ok(run(mixedURL,null,{request:true,providerArgs,failFirst:true}).response.body.includes('你好'));
+assert.equal(calls.length-beforeVolc,2,'retry transient Volc errors once');
+clearTranslations();
+volcBody=run(mixedURL,null,{request:true,providerArgs,apiHangs:true,fireDeadline:true,lateApi:true}).response.body;
+assert.ok(volcBody.includes('HELLO'));assert.ok(volcBody.includes('NEW SENTENCE'));
+assert.ok(![...store.keys()].some(key=>key.startsWith('f1cc-cue-')),'late Volc callback cannot cache a translation');
+console.log('F1 Volc integration passed: credential routing, service/cache switching, partial results, mismatched counts, auth failure, retry and late callbacks.');
 
 // Optional private real-capture regression; never published with the runtime.
 const sanitized=new URL('../tests/fixtures/f1-clear-caption-packets.json',import.meta.url);

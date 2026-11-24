@@ -15,7 +15,7 @@
   },
   "layout": {
     "tools": "All build/translation tools, source templates and regression tests.",
-    "scripts": "Unified UTS/F1 and native Fitness bilingual runtimes; content-addressed release copies are referenced by both subscription aliases.",
+    "scripts": "Unified UTS/F1 and native Fitness Chinese-only runtimes; shared translation adapter is bundled into both content-addressed assets.",
     "loon": "One unified plugin plus a compatibility alias at the former F1 experimental URL. Install only one.",
     "config/release.json": "Version 2: runtime base URL. Build derives full SHA-256 filenames from current sources; assets must be uploaded before plugin imports work.",
     "vendor/pinned": "Exact upstream scripts for 114 referenced commit/path pairs, checked by SHA-256 when Git history is absent.",
@@ -33,23 +33,24 @@
     "node": ">=18",
     "git": "required",
     "jq": "optional; tests were run with jq 1.7.1",
-    "deepseek_key": "Set only in Loon plugin arguments; not needed by offline tests."
+    "deepseek_key": "Set only in Loon plugin arguments; not needed by offline tests.",
+    "translation_credentials": "Choose deepseek (default) or volcengine in Loon. DeepSeek requires deepseek_key; Volcengine requires machine translation activation, volc_access_key_id and volc_secret_access_key. Fill secrets only in local Loon arguments; offline tests need none."
   },
   "verified_state": {
     "fitness_previous": "20261123d independent Chinese track was confirmed on Loon 3.5.3(1014). It intercepted play.itunes.apple.com.",
     "music_report": "User confirmed certificate error at play.itunes.apple.com on the same iPhone/iPad, disappearing when this plugin is disabled.",
-    "current_release": "20261124d: numbered translation mapping and single-cue recovery after malformed batches. Real phone improvement remains unconfirmed.",
-    "publication": "20261124d published on main. Hashed F1 runtime returned HTTP 200 and byte-matched runtime commit 73ba2ad before updating subscriptions. Both plugin aliases reference this runtime.",
-    "no_real_api_test": "No user API key or phone session is available here. API tests use mocks.",
-    "offline_checks": "python -B tools/dev.py passed: reproducible artifacts, 9 Python tests and four JavaScript suites. F1 coverage includes two-cue/one-result mismatch, reordered/missing/duplicate ids, legacy arrays, single-cue recovery, concurrency/cost caps, deadline fallback and prior stability cases.",
+    "current_release": "20261124f: manual DeepSeek / Volcengine machine translation selection shared by Fitness+ and F1. No real API or phone verification.",
+    "publication": "20261124f on main. Both content-addressed runtimes were pushed in commit 0a02e00 and returned HTTP 200 with exact local-byte and SHA-256 matches before updating both plugin subscription aliases. Real API/phone checks remain unverified.",
+    "no_real_api_test": "No user API keys or phone session available. DeepSeek and Volcengine API tests use mocks; Volcengine signatures are compared with independent Node crypto calculations following the official SDK signing protocol.",
+    "offline_checks": "20261124f: python -B tools/dev.py passed with reproducible release artifacts, 9 Python tests and five JavaScript suites. Coverage includes independent Node crypto signature comparison, Volcengine batch limits/concurrency, transient and permanent errors, deadline/late callback handling, partial results, provider-isolated caches, selected-credential F1 registration, and existing DeepSeek/playback regressions. Real API and phone checks remain unverified.",
     "f1_phone_feedback": "User confirmed jumping text improved substantially. User supplied a 20261124c script log showing a two-cue request falling back after two translation-count mismatches. This confirms structural response mismatch for that occurrence, not timeout. Raw response content was not supplied.",
     "fallback_diagnostics": "Confirmed log: translation-count mismatch on both batch attempts, cached cues 0, untranslated cues 2. No private source URLs, account headers or original captured media are stored in tracked diagnostics."
   },
   "fitness_flow": [
     "Do not intercept play.itunes.apple.com. No Fitness master rewrite, independent Chinese track or single-course injection is used by the unified release.",
-    "Select English captions in Fitness+. Native hls-svod.itunes.apple.com Fitness English VTT files are translated in response scripts; each cue shows Chinese then the original English.",
+    "Select English captions in Fitness+. Native hls-svod.itunes.apple.com English VTT cues show Chinese only after translation; failed or timed-out cues retain their own original English.",
     "Native subtitle playlists, audio and video remain unchanged. Old marker URLs are accepted and old synthetic URLs immediately redirect to native resources.",
-    "Translation has a 2-15 second deadline (default 8); return original English on failure. Versioned identity plus original body guards the 128-slot translation cache."
+    "Translation has a 2-15 second deadline (default 8), controlled by deepseek_wait for either provider. DeepSeek retains its versioned 128-slot segment cache; Volcengine uses a 512-slot bounded sentence cache and retains successful batches during partial failures."
   ],
   "f1_flow_and_limits": [
     "One UTS JS dispatcher applies the pinned static catalog first, then registers remaining F1 OnDemand assets by league metadata. No parallel jq UTS rewrite.",
@@ -73,7 +74,7 @@
     "Do not split a merged translation heuristically or guess which time interval it belongs to. Invalid merged output is discarded; each original cue is recovered independently. Unknown response ids are ignored; successful mapped Chinese remains cached."
   ],
   "release_workflow": [
-    "Edit tools/fitness_deepseek.js, tools/uts_static.js, tools/f1_cc608.js and tools/f1_cc_runtime.js as needed. Pinned catalog is loaded by generate_loon.static_catalog().",
+    "Edit tools/translation_service.js, tools/fitness_deepseek.js, tools/uts_static.js, tools/f1_cc608.js and tools/f1_cc_runtime.js as needed. Build prepends the shared adapter to both runtimes; static catalog comes from generate_loon.static_catalog().",
     "Run python -B tools/build_release.py. Review build/ artifacts; copy current loon/ and scripts/ entries returned by build_release.release_files() into the matching repository paths.",
     "Content-addressed runtime filenames include the full SHA-256. Never change the contents of an existing hashed filename. Both plugin URLs reference the same unified implementation.",
     "Run python -B tools/dev.py, which includes build reproducibility, Python and JavaScript checks. --check-published compares local release files only; it does not confirm remote publication.",
@@ -97,5 +98,21 @@
     "Fitness+ English-track bilingual display is accepted to remove play.itunes.apple.com interception and resolve Music conflicts.",
     "F1 scope is replay with English CC, with generic detection rather than a race allowlist. No live captions or speech-to-text in this change.",
     "Do not disrupt working playback for diagnostics; clearly distinguish offline checks from real phone confirmation."
-  ]
+  ],
+  "translation_services": {
+    "selection": "translation_provider: deepseek (default), volcengine. One manual selection applies to Fitness+ and F1. No automatic cross-provider fallback. Unknown provider or missing selected credentials fails closed to native playback/captions.",
+    "volcengine_setup": "Activate machine translation. Obtain permanent Access Key ID and Secret Access Key; subusers need translation permission (official setup guide documents TranslateFullAccess). Fill volc_access_key_id and volc_secret_access_key only in local Loon arguments.",
+    "setup_docs": [
+      "https://www.volcengine.com/docs/4640/130262",
+      "https://www.volcengine.com/docs/4640/127684"
+    ],
+    "api": "POST https://translate.volcengineapi.com/?Action=TranslateText&Version=2020-06-01; region cn-north-1; service translate; SourceLanguage en; TargetLanguage zh.",
+    "api_docs": "https://www.volcengine.com/docs/4640/65067",
+    "signing_reference": "https://github.com/volcengine/volc-sdk-nodejs/blob/main/src/base/sign.ts",
+    "runtime": "tools/translation_service.js is bundled into both runtimes. Standalone UTF-8/SHA-256/HMAC signing has no Node/WebCrypto or network library dependency. Signing uses the exact serialized body sent to the server.",
+    "batching": "At most 16 texts / 5000 UTF-16 code units per request (conservative for supplementary characters), at most two requests in flight. Overlong single cues retain English. Each transient network/429/5xx or recognized transient API error gets at most one retry within the original shared deadline; 401/403, permanent API errors and malformed results do not retry.",
+    "mapping": "TranslationList must have exactly the requested count. Validate each aligned translation; never guess when count mismatches. Successful batches are cached immediately; failures and deadline preserve those results and retain English for unresolved cues. Late callbacks cannot write caches or finish again.",
+    "caches": "Provider, en-to-zh language pair and model/API version distinguish caches. Existing validated DeepSeek caches remain usable only by DeepSeek. No credentials, subtitle bodies, request headers or raw API responses are logged.",
+    "waits": "Fitness deepseek_wait default 8 seconds; F1 f1_wait default 15 seconds; both clamped to 2-15 seconds for either provider."
+  }
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-const source = readFileSync(new URL('./fitness_deepseek.js', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../build/scripts/fitness-deepseek.js', import.meta.url), 'utf8');
 const script = new vm.Script(source);
 const subtitle = 'https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/a/course/P123_A456_en_subtitles_V2.m3u8';
 const segment = subtitle.replace('.m3u8', '-0.webvtt');

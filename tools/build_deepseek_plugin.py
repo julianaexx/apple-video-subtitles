@@ -4,6 +4,8 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
+TRANSLATION_ARGUMENTS = 'translation_provider,volc_access_key_id,volc_secret_access_key,deepseek_key,deepseek_model,deepseek_wait'
+
 
 def build(base, script_url):
     url = urlsplit(script_url)
@@ -15,13 +17,16 @@ def build(base, script_url):
     at = next(i for i, line in enumerate(lines) if line.startswith("["))
     lines[at:at] = [
         "[Argument]",
+        'translation_provider = select,"deepseek","volcengine",tag=翻译服务,desc=Fitness+ 和 F1 共用；deepseek 为 DeepSeek，volcengine 为火山引擎机器翻译',
+        'volc_access_key_id = input,"",type=string,tag=火山引擎 Access Key ID,desc=开通机器翻译后仅在 Loon 本地填写 AK',
+        'volc_secret_access_key = input,"",type=string,tag=火山引擎 Secret Access Key,desc=仅在 Loon 本地填写 SK，勿分享含密钥的配置',
         'deepseek_key = input,"",type=string,tag=DeepSeek API Key,desc=仅在 Loon 本地填写密钥，勿分享含密钥的配置',
         'deepseek_model = input,"deepseek-flash",type=string,tag=DeepSeek 模型,desc=关闭思考模式按需翻译，首次播放可能需要等待',
-        'deepseek_wait = input,8,type=number,tag=翻译最长等待秒数,desc=2至15秒，超时立即放行原英文字幕',
+        'deepseek_wait = input,8,type=number,tag=Fitness+ 翻译最长等待秒数,desc=适用于所选服务；2至15秒，未译字幕超时放行英文',
         "",
     ]
     at = lines.index("[Script]") + 1
-    args = ',argument={deepseek_key,deepseek_model,deepseek_wait},enable=true'
+    args = ',argument={' + TRANSLATION_ARGUMENTS + '},enable=true'
     lines[at:at] = [
         '# Native Fitness+ English captions display only Chinese in the existing track.',
         r'http-response ^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_./-]*P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?$ '
@@ -38,8 +43,8 @@ def build(base, script_url):
     hosts = lines[hostname].partition(' = ')[2].split(', ')
     if 'play.itunes.apple.com' in hosts:
         raise ValueError('Music-safe build must not intercept play.itunes.apple.com')
-    lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ DeepSeek'
-    lines[1] = '#!desc=20261124e；Fitness+ 选择英文字幕仅显示中文；移除 Music 冲突域名解密；翻译超时放行英文'
+    lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ 可选翻译'
+    lines[1] = '#!desc=20261124f；可选 DeepSeek 或火山引擎机器翻译；Fitness+ 选择英文字幕显示中文；未译字幕超时放行英文'
     return '\n'.join(lines) + '\n'
 
 

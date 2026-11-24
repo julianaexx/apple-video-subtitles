@@ -4,13 +4,15 @@ import json
 from pathlib import Path
 import re
 from generate_loon import static_catalog
+from build_deepseek_plugin import TRANSLATION_ARGUMENTS
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def runtime():
     catalog = json.dumps(static_catalog(), ensure_ascii=False, separators=(',', ':'))
-    return ('const APPLE_STATIC_CATALOG = ' + catalog + ';\n'
+    return ((ROOT / 'tools/translation_service.js').read_text(encoding='utf-8') + '\n'
+            + 'const APPLE_STATIC_CATALOG = ' + catalog + ';\n'
             + (ROOT / "tools/uts_static.js").read_text(encoding="utf-8") + '\n'
             + (ROOT / "tools/f1_cc608.js").read_text(encoding="utf-8") + "\n"
             + (ROOT / "tools/f1_cc_runtime.js").read_text(encoding="utf-8"))
@@ -31,7 +33,7 @@ def build(base, script_url):
     lines = [line.replace("# The UTS rewrite is embedded using Loon's response-body-json-jq action.",
                           '# One UTS response script routes static subtitles before F1 AI.') for line in lines]
     at = lines.index("[Script]") + 1
-    arguments = ',argument={deepseek_key,deepseek_model,deepseek_wait,f1_wait},enable=true'
+    arguments = ',argument={' + TRANSLATION_ARGUMENTS + ',f1_wait},enable=true'
     linear = r'linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com'
     content = r'\/Content\/HLS_CBC\/CatchUp\/Channel\([^\s]+\/Stream\(\d+\)\/'
     rules = [
@@ -54,8 +56,8 @@ def build(base, script_url):
     hosts = lines[index].partition(' = ')[2].split(', ')
     if set(hosts) & {'play.itunes.apple.com', 'play-edge.itunes.apple.com', 'linear.tv.apple.com'}:
         raise ValueError('shared playback/license hosts must not be intercepted')
-    lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ 中文 + F1 AI 实验'
-    lines[1] = '#!desc=20261124e；Fitness+ 选择英文字幕仅显示中文，刷新旧双语缓存；保留 F1 逐句补译；保持 Music 兼容'
+    lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ / F1 可选翻译'
+    lines[1] = '#!desc=20261124f；Fitness+ 和 F1 可选 DeepSeek 或火山引擎机器翻译；Fitness+ 选择英文字幕显示中文；保持 Music 兼容'
     return '\n'.join(lines) + '\n'
 
 

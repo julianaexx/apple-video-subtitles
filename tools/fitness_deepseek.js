@@ -1,15 +1,14 @@
-// Fitness+ native English WebVTT -> DeepSeek -> Chinese-only cues. No embedded credentials.
+// Fitness+ native English WebVTT -> selected service -> Chinese-only cues.
 (function () {
-  const API = 'https://api.deepseek.com/chat/completions';
   const CACHE_VERSION = 'fitness-ds-zh-only-3';
   let finished = false;
   let deadlineTimer = null;
   const args = typeof $argument === 'object' && $argument ? $argument : {};
-  const key = String(args.deepseek_key || '').trim();
-  const model = String(args.deepseek_model || 'deepseek-flash').trim();
+  const service = AppleTranslation.create(args);
+  const model = service.model;
   const waitSeconds = Math.max(2, Math.min(15, Number(args.deepseek_wait) || 8));
-  const VERSION = '20261124e';
-  console.log('Fitness+ DeepSeek ' + VERSION + ': ' + (typeof $response === 'undefined' ? 'legacy redirect' : 'native response'));
+  const VERSION = '20261124f';
+  console.log('Fitness+ ' + service.label + ' ' + VERSION + ': ' + (typeof $response === 'undefined' ? 'legacy redirect' : 'native response'));
 
   function finish(value) {
     if (!finished) {
@@ -19,7 +18,7 @@
     }
   }
   function warn(message) {
-    console.log('Fitness+ DeepSeek: ' + message);
+    console.log('Fitness+ ' + service.label + ': ' + message);
     try {
       const stamp = Number($persistentStore.read('fitness-ds-notify') || 0);
       if (Date.now() - stamp > 120000) {
@@ -73,18 +72,47 @@
       warn('字幕格式或分片大小暂不支持，返回英文'); finish({}); return;
     }
     if (!parsed.cues.length) { finish({}); return; }
-    if (!/^sk-[A-Za-z0-9_-]+$/.test(key)) {
-      warn('请先在 Loon 插件参数中填写 DeepSeek API Key'); finish({}); return;
+    if (!service.ready) {
+      warn('请在 Loon 插件参数中检查所选翻译服务及其密钥'); finish({}); return;
     }
-    const identity = CACHE_VERSION + ':' + model + ':' + source.split('?')[0];
+    const identity = CACHE_VERSION + ':' + (service.provider === 'deepseek' ? model : service.identity) + ':' + source.split('?')[0];
     const slot = 'fitness-ds-cache-' + (hash(identity) % 128);
     try {
       const cached = JSON.parse($persistentStore.read(slot) || 'null');
       if (cached && cached.identity === identity && cached.original === body && typeof cached.translated === 'string') {
-        console.log('Fitness+ DeepSeek ' + VERSION + ': 缓存命中'); finish({body:cached.translated}); return;
+        console.log('Fitness+ ' + service.label + ' ' + VERSION + ': 缓存命中'); finish({body:cached.translated}); return;
       }
     } catch (_) { /* Cache is optional. */ }
     const texts = parsed.cues.map(row => row.text);
+    if (service.provider === 'volcengine') {
+      const values = new Map(), started = Date.now();
+      const cueSlot = text => 'fitness-volc-cue-' + (hash(service.identity + ':' + text) % 512);
+      const valid = (value,text) => typeof value === 'string' && !!value.trim() && value.length <= 2048
+        && !/\r|\n\s*\n|-->/.test(value) && (!/[A-Za-z]{3,}/.test(text) || /[\u3400-\u9fff]/.test(value));
+      const missing = [...new Set(texts)].filter(text => {
+        try {
+          const row = JSON.parse($persistentStore.read(cueSlot(text)) || 'null');
+          if (row && row.identity === service.identity && row.text === text && valid(row.translation,text)) values.set(text,row.translation);
+        } catch (_) { /* Optional cache. */ }
+        return !values.has(text);
+      });
+      function output() {
+        for (const cue of parsed.cues) parsed.blocks[cue.index] = cue.prefix + '\n' + (values.get(cue.text) || cue.text);
+        finish({body:parsed.blocks.join('\n\n') + '\n\n'});
+      }
+      if (!missing.length) { output(); return; }
+      deadlineTimer = setTimeout(() => { warn('翻译等待超时，未译字幕返回英文'); output(); },waitSeconds * 1000);
+      service.translateVolc(missing.map((text,id) => ({id,text})), {
+        remaining: () => waitSeconds * 1000 - (Date.now() - started), stopped: () => finished,
+        accept(entry,value) {
+          if (!valid(value,entry.text)) return;
+          const translation = value.trim(); values.set(entry.text,translation);
+          try { $persistentStore.write(JSON.stringify({identity:service.identity,text:entry.text,translation}),cueSlot(entry.text)); } catch (_) { /* Optional. */ }
+        },
+        complete(reason) { if (values.size < new Set(texts).size) warn(reason + '，未译字幕返回英文'); output(); },
+      });
+      return;
+    }
     const request = {
       model, thinking: { type: 'disabled' }, stream: false, temperature: 0.1, max_tokens: 4096,
       response_format: { type: 'json_object' },
@@ -100,8 +128,7 @@
       warn('翻译超过 ' + waitSeconds + ' 秒，放行原英文字幕');
       finish({});
     }, waitSeconds * 1000);
-    $httpClient.post({ url: API, timeout: waitSeconds * 1000 - 300, insecure: false, 'auto-redirect': false, 'auto-cookie': false,
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(request) },
+    $httpClient.post(service.deepseekRequest(request,waitSeconds * 1000 - 300),
     (error, response, text) => {
       if (finished) return;
       try {
@@ -122,7 +149,7 @@
         }
         const result = parsed.blocks.join('\n\n') + '\n\n';
         try { $persistentStore.write(JSON.stringify({ identity, original: body, translated: result }), slot); } catch (_) { /* Optional. */ }
-        console.log('Fitness+ DeepSeek: 已翻译 ' + texts.length + ' 条字幕');
+        console.log('Fitness+ ' + service.label + ': 已翻译 ' + texts.length + ' 条字幕');
         finish({body:result});
       } catch (_) {
         warn('翻译结果未通过校验，返回英文'); finish({});
@@ -143,7 +170,7 @@
       // v1 URLs. Redirect immediately; do not download or retry inside the script.
       const source = sourceURL($request.url);
       if (!source) { send('Not found', 'text/plain', 404); return; }
-      console.log('Fitness+ DeepSeek ' + VERSION + ': 旧字幕入口立即回退原地址');
+      console.log('Fitness+ ' + service.label + ' ' + VERSION + ': 旧字幕入口立即回退原地址');
       finish({response:{status:302,headers:{Location:source.src,'Cache-Control':'no-store'},body:''}});
     }
   } catch (_) {

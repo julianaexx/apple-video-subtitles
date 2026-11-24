@@ -5,6 +5,7 @@ import unittest
 
 from build_release import release_files
 from generate_loon import ROOT
+from build_deepseek_plugin import TRANSLATION_ARGUMENTS
 
 
 class UnifiedReleaseTests(unittest.TestCase):
@@ -29,9 +30,13 @@ class UnifiedReleaseTests(unittest.TestCase):
         self.assertEqual(len(handlers), 1)
         self.assertIn('f1_wait = input,15,', self.plugin)
         f1_rules = [line for line in self.plugin.splitlines() if 'tag=F1.CC.' in line]
-        self.assertTrue(all('argument={deepseek_key,deepseek_model,deepseek_wait,f1_wait}' in line for line in f1_rules))
+        self.assertTrue(all('argument={' + TRANSLATION_ARGUMENTS + ',f1_wait}' in line for line in f1_rules))
+        self.assertIn('translation_provider = select,"deepseek","volcengine"', self.plugin)
+        for argument in ('volc_access_key_id', 'volc_secret_access_key'):
+            self.assertIn(argument + ' = input,""', self.plugin)
         line = next(line for line in self.plugin.splitlines() if 'tag=Fitness.DeepSeek.VTT,' in line)
         self.assertNotIn('f1_wait', line)
+        self.assertIn('argument={' + TRANSLATION_ARGUMENTS + '}', line)
         pattern = line.split(' ', 2)[1]
         segment = ('https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/a/course/'
                    'P123_A456_en_subtitles_V2-0.webvtt')
