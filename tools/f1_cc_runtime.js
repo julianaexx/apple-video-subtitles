@@ -1,6 +1,6 @@
 // Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261124f', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261124g', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
