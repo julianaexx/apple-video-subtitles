@@ -23,8 +23,8 @@ assert.ok(library.cc.webvtt(data,decoded.cues).includes('00:00:00.000 --> 00:00:
 assert.throws(()=>library.cc.extract(binary.slice(0,-2)));
 
 const store=new Map(),calls=[];
-function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false}={}){
-  const results=[],timers=new Map();let at=0,late=null;
+function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false}={}){
+  const results=[],timers=new Map();let at=0,late=null,latePost=null,posts=0;
   vm.runInNewContext(runtime,{
     Uint8Array,$request:{url,headers:{'User-Agent':'AppleCoreMedia test',Authorization:'apple-secret',Cookie:'account-secret'}},...(!request?{$response:{status:200,body}}:{}),
     $argument:{deepseek_key:key,deepseek_model:'deepseek-flash',deepseek_wait:8},
@@ -40,13 +40,17 @@ function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,
     },post(options,callback){
       calls.push(options);assert.equal(options.url,'https://api.deepseek.com/chat/completions');
       const texts=JSON.parse(JSON.parse(options.body).messages[1].content).subtitles;
+      posts++;
+      latePost=()=>callback(null,{status:200},JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:texts.map(()=>translation)})}}]}));
       if(apiHangs)return;
+      if(failFirst&&posts===1){callback(null,{status:503},'');return;}
       if(apiMalformed){callback(null,{status:200},'invalid');return;}
-      callback(apiFails?'network':null,{status:apiFails?500:200},JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:texts.map(()=>'你好')})}}]}));
+      callback(null,{status:apiFails?apiStatus:200},JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({translations:texts.map(()=>translation)})}}]}));
     }},
   },{timeout:1000});
   if(fireDeadline)for(const fn of timers.values())fn();
   if(lateSource)late();
+  if(lateApi&&latePost)latePost();
   assert.equal(results.length,1);return JSON.parse(JSON.stringify(results[0]));
 }
 const masterURL='https://linear.tv.apple.com/v1/hls/playlist.m3u8?referenceId=umc.cmr.f1live.sp.generic-event';
@@ -89,7 +93,7 @@ const relative=master.replace(stream+'index.m3u8',stream+'index.m3u8')
 assert.ok(run(bridge,null,{request:true,sources:{[masterURL]:relative}}).response.body.includes('URI="skd://untouched-license"'));
 // Missing observed video/playlist must be fetched on the subtitle path, not
 // permanently turned into a blank initial subtitle.
-for(const key of [...store.keys()])if(key.startsWith('f1cc-playlist-')||key.startsWith('f1cc-segment-')||key.startsWith('f1cc-zh-'))store.delete(key);
+for(const key of [...store.keys()])if(key.startsWith('f1cc-playlist-')||key.startsWith('f1cc-segment-')||key.startsWith('f1cc-zh-')||key.startsWith('f1cc-cue-v2-'))store.delete(key);
 const eagerList=run(listURL,null,{request:true,sources:{[stream+'index.m3u8']:media}}).response.body;
 assert.ok(eagerList.includes('segment.vtt'));
 assert.ok(run(segmentURL,null,{request:true,sources:{[stream+'Segment(0).m4v']:binary}}).response.body.includes('你好'));
@@ -146,18 +150,26 @@ assert.deepEqual(run(uts,JSON.stringify(metadata),{storageFails:true}),{});
 assert.equal(run(bridge,null,{request:true,sources:{[masterURL]:master},storageFails:true}).response.status,302);
 // Refresh registration after deliberately failing storage.
 run(bridge,null,{request:true,sources:{[masterURL]:master}});
-function clearTranslations(){for(const key of [...store.keys()])if(key.startsWith('f1cc-zh-'))store.delete(key);}
+function clearTranslations(){for(const key of [...store.keys()])if(key.startsWith('f1cc-zh-')||key.startsWith('f1cc-cue-v2-'))store.delete(key);}
 clearTranslations();
 assert.ok(run(segmentURL,null,{request:true,apiFails:true}).response.body.includes('HELLO'));
 assert.ok(run(segmentURL,null,{request:true,apiMalformed:true}).response.body.includes('HELLO'));
-assert.ok(run(segmentURL,null,{request:true,apiHangs:true,fireDeadline:true}).response.body.includes('HELLO'));
+assert.ok(run(segmentURL,null,{request:true,apiHangs:true,fireDeadline:true,lateApi:true}).response.body.includes('HELLO'));
+clearTranslations();
+let beforeRetry=calls.length;
+assert.ok(run(segmentURL,null,{request:true,failFirst:true}).response.body.includes('你好'));
+assert.equal(calls.length-beforeRetry,2,'transient failures retry once within the same total deadline');
+clearTranslations();beforeRetry=calls.length;
+assert.ok(run(segmentURL,null,{request:true,apiFails:true,apiStatus:401}).response.body.includes('HELLO'));
+assert.equal(calls.length-beforeRetry,1,'invalid credentials are not retried');
 // Fragment time, not request order, determines decoder continuity.
-function timedBinary(origin){
+function timedBinary(origin,payload=packet){
   const index=box('sidx',u32(0),u32(1),u32(1000),u32(origin),u32(0),u32(0));
   const time=box('tfdt',u32(0),u32(origin));
   let fragment=box('moof',box('traf',tfhd,time,trun(0)));
   fragment=box('moof',box('traf',tfhd,time,trun(fragment.length+8)));
-  return new Uint8Array(Buffer.concat([index,fragment,box('mdat',packet)]));
+  assert.equal(payload.length,packet.length);
+  return new Uint8Array(Buffer.concat([index,fragment,box('mdat',payload)]));
 }
 run(stream+'Segment(1).m4v',timedBinary(6000));
 const recordsBefore=JSON.stringify([...store].filter(([key])=>key.startsWith('f1cc-state-')));
@@ -167,6 +179,58 @@ assert.equal(JSON.stringify([...store].filter(([key])=>key.startsWith('f1cc-stat
 run(stream+'Segment(3).m4v',timedBinary(18000));
 run(stream+'Segment(2).m4v',timedBinary(12000));
 assert.ok([...store.values()].some(value=>{const row=JSON.parse(value);return row.url===stream+'Segment(2).m4v'&&row.body.includes('MPEGTS:1080000');}));
+// Identical source captions spanning fragments reuse one exact translation,
+// even when the model would otherwise produce different wording.
+clearCaptionState();
+run(stream+'Segment(0).m4v',binary);
+const resetPacket=Buffer.from(packet);resetPacket[9]=0x2c;
+run(stream+'Segment(1).m4v',timedBinary(6000,resetPacket));
+clearTranslations();
+assert.ok(run(segmentURL,null,{request:true,translation:'第一版译文'}).response.body.includes('第一版译文'));
+const secondURL=segmentURL.replace(encodeURIComponent('Segment(0).m4v'),encodeURIComponent('Segment(1).m4v'));
+const beforeShared=calls.length;
+assert.ok(run(secondURL,null,{request:true,translation:'不同的译文'}).response.body.includes('第一版译文'));
+assert.equal(calls.length,beforeShared,'cross-fragment captions must not be retranslated');
+
+// Adjacent roll-on prefixes become a complete stable cue; unrelated lines and
+// clear-display gaps retain their original boundaries.
+const stabilized=library.cc.stabilize([
+  {start:0,end:0.2,text:'HE'},{start:0.2,end:0.4,text:'HELL'},
+  {start:0.4,end:1,text:'HELLO'},{start:1,end:2,text:'NEXT'},
+  {start:2.2,end:3,text:'NEXT WORD'},
+]);
+assert.equal(stabilized.length,3);assert.equal(stabilized[0].text,'HELLO');
+assert.equal(stabilized[0].start,0);assert.equal(stabilized[0].end,1);
+
+// Repair an eagerly decoded empty fragment after its predecessor becomes ready.
+function clearCaptionState(){for(const key of [...store.keys()])if(key.startsWith('f1cc-state-')||key.startsWith('f1cc-segment-'))store.delete(key);}
+clearCaptionState();
+const empty=timedBinary(6000,Buffer.alloc(packet.length));
+run(stream+'Segment(1).m4v',empty);
+run(stream+'Segment(0).m4v',binary);
+assert.ok(run(secondURL,null,{request:true}).response.body.includes('第一版译文'),
+  'previously empty eager fragment must be decoded again using the now-ready boundary state');
+
+// When subtitles lead the video, fetch only one previous fragment, with a short
+// deadline. Do not return a permanently empty VTT for a carried caption.
+clearCaptionState();
+const twoSegments=media.replace('#EXT-X-ENDLIST', '#EXTINF:6,\nSegment(1).m4v\n#EXT-X-ENDLIST');
+run(stream+'index.m3u8',twoSegments);
+assert.ok(run(secondURL,null,{request:true,sources:{
+  [stream+'Segment(0).m4v']:binary,[stream+'Segment(1).m4v']:empty,
+}}).response.body.includes('第一版译文'));
+// A failed new sentence must not discard a neighboring cached translation.
+const slotHash=text=>{let value=2166136261;for(let i=0;i<text.length;i++)value=Math.imul(value^text.charCodeAt(i),16777619);return(value>>>0).toString(16);};
+const mixedSource=stream+'Segment(20).m4v';
+store.set('f1cc-segment-'+(parseInt(slotHash(mixedSource),16)%128),JSON.stringify({
+  version:'f1cc-20261124b',url:mixedSource,at:Date.now(),continued:true,
+  body:'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:0\n\n1\n00:00:00.000 --> 00:00:01.000\nHELLO\n\n2\n00:00:01.000 --> 00:00:02.000\nNEW SENTENCE\n\n',
+}));
+const mixedURL=segmentURL.replace(encodeURIComponent('Segment(0).m4v'),encodeURIComponent('Segment(20).m4v'));
+const mixedFallback=run(mixedURL,null,{request:true,apiFails:true}).response.body;
+assert.ok(mixedFallback.includes('第一版译文'));assert.ok(mixedFallback.includes('NEW SENTENCE'));
+assert.ok(!mixedFallback.includes('\nHELLO\n'),'successful cached Chinese survives a later failure');
+console.log('F1 stability checks passed: cross-fragment wording, prefix coalescing, carry-in repair, bounded retry, late callbacks and partial fallback.');
 console.log('Unified release routing passed: static priority, Music-safe Fitness, CC retries/seeks, API failures and playback fallbacks.');
 
 // Optional private real-capture regression; never published with the runtime.

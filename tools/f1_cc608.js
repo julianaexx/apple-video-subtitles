@@ -149,9 +149,23 @@ const F1Captions = (function () {
     return String(Math.floor(ms/3600000)).padStart(2,'0')+':'+String(Math.floor(ms/60000)%60).padStart(2,'0')
       +':'+String(Math.floor(ms/1000)%60).padStart(2,'0')+'.'+String(ms%1000).padStart(3,'0');
   }
+  function stabilize(cues) {
+    const result=[];
+    for(const cue of cues){
+      const previous=result[result.length-1];
+      // CEA-608 paint/roll-on updates can expose one more character every frame.
+      // Keep the complete row for its interval instead of translating each prefix.
+      if(previous&&cue.start-previous.end<0.05&&cue.start>=previous.start
+          &&cue.text.startsWith(previous.text)
+          &&cue.text.split('\n').length===previous.text.split('\n').length){
+        previous.text=cue.text;previous.end=cue.end;
+      }else result.push({...cue});
+    }
+    return result;
+  }
   function webvtt(data, cues) {
     return 'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:'+data.mpegts+'\n\n'
       +cues.map((cue,i)=>String(i+1)+'\n'+timestamp(cue.start)+' --> '+timestamp(cue.end)+'\n'+cue.text+'\n\n').join('');
   }
-  return {extract,decode,webvtt};
+  return {extract,decode,stabilize,webvtt};
 })();

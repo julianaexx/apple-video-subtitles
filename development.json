@@ -38,10 +38,11 @@
   "verified_state": {
     "fitness_previous": "20261123d independent Chinese track was confirmed on Loon 3.5.3(1014). It intercepted play.itunes.apple.com.",
     "music_report": "User confirmed certificate error at play.itunes.apple.com on the same iPhone/iPad, disappearing when this plugin is disabled.",
-    "current_release": "20261124a: Music-safe Fitness bilingual captions and unified F1 routing. Offline regression checks passed; current phone playback, Music playback and real API translation remain unconfirmed.",
-    "publication": "20261124a release published on main. Both content-addressed runtime URLs returned HTTP 200 and byte-matched runtime commit d1ebfea. The subscription and source changes are in the subsequent release commit.",
+    "current_release": "20261124b stability patch: sentence-level translation cache, prefix stabilization, preceding-fragment state repair and at most one transient-error retry within the existing translation deadline. Real phone stability improvements remain unconfirmed.",
+    "publication": "20261124b published on main. Hashed F1 runtime returned HTTP 200 and byte-matched runtime commit 61e84aa before updating subscriptions. Both plugin aliases reference this runtime.",
     "no_real_api_test": "No user API key or phone session is available here. API tests use mocks.",
-    "offline_checks": "python -B tools/dev.py passed: reproducible artifacts, 9 Python tests and all four JavaScript suites. Publication preflight also reproduced all release artifacts."
+    "offline_checks": "python -B tools/dev.py passed: reproducible artifacts, 9 Python tests and four JavaScript suites, including cross-fragment wording consistency, prefix coalescing, carry-in repair, one bounded retry, late callback handling and partial English fallback.",
+    "f1_phone_feedback": "User confirmed 20261124a F1 AI subtitles work, but reported jumping text and intermittent English captions. No new raw playback log was available."
   },
   "fitness_flow": [
     "Do not intercept play.itunes.apple.com. No Fitness master rewrite, independent Chinese track or single-course injection is used by the unified release.",
@@ -57,7 +58,11 @@
     "Read clear GA94 CEA-608 packets and sample timestamps without decrypting or modifying video. One low-bandwidth caption source per pathway; translation runs only on subtitle requests.",
     "Reuse extracted fragments on duplicate requests. Bounded decoder snapshots are keyed by stream and media boundary time to avoid request-order state contamination across seeks.",
     "Live streams, CEA-708-only content, no-English-CC content and unrecorded CDN formats are not supported by this release.",
-    "Actual phone success remains unconfirmed. Tests use reconstructed upstream multivariant structure, sanitized real CC packets and synthetic MP4 fragments."
+    "Actual phone success remains unconfirmed. Tests use reconstructed upstream multivariant structure, sanitized real CC packets and synthetic MP4 fragments.",
+    "20261124b coalesces adjacent CEA-608 character-prefix updates within a fragment. Exact normalized source sentences reuse one model-specific Chinese translation across fragments and pathways in 512 bounded slots.",
+    "Cached Chinese is retained when a new cue fails. Transient HTTP/network/format errors get at most one retry within deepseek_wait; 401/403 are not retried. Logs record fallback reason and cache counts without caption text or credentials.",
+    "Subtitle requests may retrieve one previous fragment with a 1.5 second deadline to reconstruct carried CC. Raw extracted caption frames are cached to repair an eager decode when predecessor state arrives later. Video never waits for translation.",
+    "Requests cannot guarantee Chinese when the translation service remains unavailable; only untranslated cues fall back to their own English text. Stability fixes still require phone confirmation."
   ],
   "release_workflow": [
     "Edit tools/fitness_deepseek.js, tools/uts_static.js, tools/f1_cc608.js and tools/f1_cc_runtime.js as needed. Pinned catalog is loaded by generate_loon.static_catalog().",
