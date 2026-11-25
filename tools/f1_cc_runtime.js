@@ -1,6 +1,6 @@
 // Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261124j', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261125a', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
@@ -70,30 +70,34 @@
     const record=read('vod-'+hash(match[1]+':'+match[2]));
     return !!record&&record.program===match[1]&&record.asset===match[2]&&Date.now()-record.at<14400000;
   }
+  function registerVOD(source){
+    if(!service.ready||!masterSource(source))return false;
+    const program=field(source,'id'),asset=field(source,'a');
+    if(!/^\d+$/.test(program||'')||!/^\d+$/.test(asset||''))return false;
+    return write('vod-'+hash(program+':'+asset),{program,asset,at:Date.now()});
+  }
   function registerUTS(body){
     let changed=0,skipped=0;
     function walk(node,inherited,condensed){
       if(!node||typeof node!=='object')return;
       const meta=node.canonicalMetadata||{};
       const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1';
-      // Condensed VOD is not a verified CatchUp CC source. Keep Apple's signed
-      // playback URL intact; a bridge followed by a 302 can prevent startup.
+      // Subscription VOD and linear CatchUp have different subtitle pipelines.
+      // Keep signed VOD playback native, including qualifying and practice.
       condensed=condensed||/^condensed$/i.test(node.recapType||'')
         ||[node.title,node.shortTitle,node.feedName,meta.title,meta.shortTitle]
           .some(value=>typeof value==='string'&&/\brace\s+in\s+30\b/i.test(value));
       if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){
         const source=node.assets.hlsUrl,key=identity(source);
-        if(condensed){
+        const vod=condensed||/^https:\/\/play(?:-edge)?\.itunes\.apple\.com\//.test(source);
+        if(vod){
           skipped++;
           // Register the asset, without changing Apple's signed playback URL.
           // Only its observed native English WebVTT responses may be translated.
-          const program=field(source,'id'),asset=field(source,'a');
-          if(service.ready&&/^\d+$/.test(program||'')&&/^\d+$/.test(asset||'')){
-            write('vod-'+hash(program+':'+asset),{program,asset,at:Date.now()});
-          }
+          registerVOD(source);
         }
         // Keep FairPlay certificate, nonce and license URLs exactly as Apple sent them.
-        if(!condensed&&key&&masterSource(source)&&service.ready){
+        if(!vod&&key&&masterSource(source)&&service.ready){
           const token=hash(key);
           if(write('event-'+token,{identity:key,source,at:Date.now()})){
             node.assets.hlsUrl=resource(token,'master.m3u8');changed++;
@@ -113,24 +117,29 @@
       }
     }
     staticWalk(data);walk(data,false,false);
-    if(skipped)log('精简版保留原生播放 '+skipped+' 项');
+    if(skipped)log('F1 点播保留原生播放 '+skipped+' 项，英文 WebVTT 按资源翻译');
     log('静态字幕/F1 回放路由 '+changed+' 项，许可证地址不改写');
     return changed?JSON.stringify(data):null;
   }
   function master(body,base){
-    if(!service.ready)return null;
+    function reject(reason){log('主列表检查：'+reason);return null;}
+    if(!service.ready)return reject('翻译服务未配置');
     const id=identity(base),registered=id&&read('event-'+hash(id));
-    if(!registered||registered.identity!==id||Date.now()-registered.at>14400000)return null;
-    if(!body.startsWith('#EXTM3U')||body.includes('LANGUAGE="zh')||body.includes('TYPE=SUBTITLES'))return null;
+    if(!registered||registered.identity!==id||Date.now()-registered.at>14400000)return reject('节目注册缺失或过期');
+    if(!body.startsWith('#EXTM3U'))return reject('响应不是 M3U8');
+    if(body.includes('LANGUAGE="zh'))return reject('列表已有中文字幕标记');
+    if(body.includes('TYPE=SUBTITLES'))return reject('列表含独立字幕轨，不能使用内嵌 CC 入口');
     const lines=body.replace(/\r/g,'').split('\n');
     const ccGroups=new Set(lines.filter(line=>line.startsWith('#EXT-X-MEDIA:')).map(attrs)
       .filter(row=>row.TYPE==='CLOSED-CAPTIONS'&&/^en(?:-|$)/i.test(row.LANGUAGE||'')&&row['INSTREAM-ID']==='CC1').map(row=>row['GROUP-ID']));
-    if(!ccGroups.size)return null;
+    if(!ccGroups.size)return reject('未找到英文 CC1');
     const rows=[],groups=new Map(),variants=[];
     for(let i=0;i<lines.length;i++){
       if(!lines[i].startsWith('#EXT-X-STREAM-INF:'))continue;
       const a=attrs(lines[i]),source=url(lines[i+1],base);
-      if(!a.CODECS||!ccGroups.has(a['CLOSED-CAPTIONS'])||!native(source)||!source.includes('.m3u8'))return null;
+      if(!a.CODECS)return reject('视频档位缺少 CODECS');
+      if(!ccGroups.has(a['CLOSED-CAPTIONS']))return reject('视频档位未关联英文 CC1');
+      if(!native(source)||!source.includes('.m3u8'))return reject('视频地址不是支持的 CatchUp 列表');
       const pathway=a['PATHWAY-ID']||'default';
       variants.push({index:i,attrs:a,pathway});
       const bandwidth=Number(a.BANDWIDTH)||Infinity;
@@ -149,12 +158,12 @@
       const codecs=a.CODECS.split(',');if(!codecs.includes('wvtt'))codecs.push('wvtt');
       lines[i]=lines[i].replace(/CODECS="[^"]*"/,'CODECS="'+codecs.join(',')+'"')+',SUBTITLES="'+group+'"';
     }
-    if(!rows.length)return null;
+    if(!rows.length)return reject('没有可用视频档位');
     // Register only after every variant has passed validation.
     for(const value of groups.values()){
-      if(!write('registry-'+value.key,{source:value.source,at:Date.now()}))return null;
+      if(!write('registry-'+value.key,{source:value.source,at:Date.now()}))return reject('字幕资源注册写入失败');
       const root=value.source.split('?')[0].replace(/\/[^/]+$/,'');
-      if(!write('stream-'+hash(root),{root,key:value.key,at:Date.now()}))return null;
+      if(!write('stream-'+hash(root),{root,key:value.key,at:Date.now()}))return reject('视频资源注册写入失败');
     }
     lines.splice(1,0,...rows);
     // The bridge has a different origin/path: resolve every native media/key URI.
@@ -425,7 +434,7 @@
       const body=$response.body;
       if(body instanceof Uint8Array){observe(body,source);finish({});return;}
       if(typeof body!=='string'){finish({});return;}
-      if(nativeVTT(source)){log('精简版原生英文字幕');translate({body,native:true});return;}
+      if(nativeVTT(source)){log('F1 点播原生英文字幕');translate({body,native:true});return;}
       if(/^https:\/\/uts-api\.itunes\.apple\.com\/uts\//.test(source)){
         const output=registerUTS(body);finish(output?{body:output}:{});return;
       }
@@ -438,6 +447,11 @@
     if(main){
       const record=read('event-'+main[1]);
       if(!record||!masterSource(record.source)){send('Not found','text/plain',404);return;}
+      // Old Apple TV sessions can retain a pre-update synthetic VOD URL.
+      // Refresh native caption registration even before the UTS page reloads.
+      if(/^https:\/\/play(?:-edge)?\.itunes\.apple\.com\//.test(record.source)){
+        registerVOD(record.source);log('旧点播入口切换原生字幕路径');redirect(record.source);return;
+      }
       if(Date.now()-record.at>14400000){redirect(record.source);return;}
       // Fetch only the main playlist. Never decrypt the linear.tv license host.
       fetchSource(record.source,false,body=>{

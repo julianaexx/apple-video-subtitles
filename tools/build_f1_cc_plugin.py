@@ -59,7 +59,7 @@ def build(base, script_url):
     if set(hosts) & {'play.itunes.apple.com', 'play-edge.itunes.apple.com', 'linear.tv.apple.com'}:
         raise ValueError('shared playback/license hosts must not be intercepted')
     lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ / F1 可选翻译'
-    lines[1] = '#!desc=20261124j；新增 Race in 30 原生英文字幕翻译，保留原生播放入口；同步上游 v261123a；保留 Fitness+ / F1 可选翻译及 Music 兼容'
+    lines[1] = '#!desc=20261125a；F1 订阅点播含排位及练习回放改用原生英文字幕翻译；细化 CC 列表诊断；保留原生播放及 Music 兼容'
     return '\n'.join(lines) + '\n'
 
 

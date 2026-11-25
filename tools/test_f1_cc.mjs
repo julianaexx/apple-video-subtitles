@@ -24,14 +24,14 @@ assert.ok(library.cc.webvtt(data,decoded.cues).includes('00:00:00.000 --> 00:00:
 assert.throws(()=>library.cc.extract(binary.slice(0,-2)));
 
 const store=new Map(),calls=[];
-function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false,f1Wait,apiDelay=0,apiResponses=[],throwAPI=false,onPost=null,deferSingles=false,providerArgs={}}={}){
+function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,fireDeadline=false,lateSource=false,key='sk-testonly',storageFails=false,apiHangs=false,apiMalformed=false,failFirst=false,apiStatus=500,translation='你好',lateApi=false,f1Wait,apiDelay=0,apiResponses=[],throwAPI=false,onPost=null,deferSingles=false,providerArgs={},logs=[]}={}){
   const results=[],timers=new Map();let at=0,late=null,latePost=null,posts=0,clockNow=Date.now();
   const deferred=[];
   vm.runInNewContext(runtime,{
     Date:class extends Date {static now(){return clockNow;}},Uint8Array,$request:{url,headers:{'User-Agent':'AppleCoreMedia test',Authorization:'apple-secret',Cookie:'account-secret'}},...(!request?{$response:{status:200,body}}:{}),
     $argument:{deepseek_key:key,deepseek_model:'deepseek-flash',deepseek_wait:8,...(f1Wait===undefined?{}:{f1_wait:f1Wait}),...providerArgs},
     $persistentStore:{read:key=>store.get(key),write(value,key){if(storageFails)return false;store.set(key,value);return true;}},
-    console:{log(){}},$done:value=>results.push(value),setTimeout(fn){timers.set(++at,fn);return at;},clearTimeout(id){timers.delete(id);},
+    console:{log:value=>logs.push(value)},$done:value=>results.push(value),setTimeout(fn){timers.set(++at,fn);return at;},clearTimeout(id){timers.delete(id);},
     $httpClient:{get(options,callback){
       assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.Cookie,undefined);
       assert.equal(options['auto-redirect'],false);assert.equal(options.insecure,false);
@@ -213,6 +213,29 @@ if(existsSync(capturedNative)){
   console.log('Private native VTT fixture passed: captured cue timing/settings and timestamp map retained.');
 }
 console.log('Race in 30 native VTT passed: asset scope, unchanged playback, timing/settings, providers, cache and English fallback.');
+// Qualifying/practice subscription VOD lacks the Condensed/Race in 30 labels.
+// Its source type, rather than the session title, must select native subtitles.
+const qualifyingSource=condensedURL.replace('6837919154','900000001').replace('1560312730','900000002');
+const qualifyingPlayable={canonicalMetadata:{leagueShortName:'F1',shortTitle:'Spain: Qualifying'},
+  airingType:'OnDemand',type:'Vod',assets:{hlsUrl:qualifyingSource,fpsKeyServerUrl:keyServer}};
+const qualifyingVTT=nativeURL.replace('6837919154','900000001').replace('1560312730','900000002');
+const qualifyingBody=nativeHeader+'\n\n'+nativeTiming+'\nThe qualifying session starts now.\n\n';
+assert.deepEqual(run(qualifyingVTT,qualifyingBody),{},'qualifying subtitles require F1 asset registration');
+for(const title of ['Spain: Qualifying','Spain: Practice 1','Spain: Race']){
+  const playable={...qualifyingPlayable,canonicalMetadata:{leagueShortName:'F1',shortTitle:title}};
+  assert.deepEqual(run(uts,JSON.stringify(playable)),{},'subscription VOD keeps native playback regardless of session title');
+}
+assert.ok(run(qualifyingVTT,qualifyingBody,{translation:'排位赛中文'}).body.includes('排位赛中文'));
+store.set('f1cc-event-abc123',JSON.stringify({identity:'asset-900000002-900000001',source:qualifyingSource,at:Date.now()}));
+for(const cacheKey of [...store.keys()])if(cacheKey.startsWith('f1cc-vod-')&&JSON.parse(store.get(cacheKey)).asset==='900000001')store.delete(cacheKey);
+const legacyBridge='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/abc123/master.m3u8';
+assert.equal(run(legacyBridge,null,{request:true}).response.headers.Location,qualifyingSource);
+assert.ok(run(qualifyingVTT,qualifyingBody).body.includes('排位赛中文'),'legacy bridge refreshes native subtitle registration');
+const diagnosticLogs=[];
+run(bridge,null,{request:true,sources:{[masterURL]:master.replace('#EXTM3U\n','#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="native",LANGUAGE="en",URI="secret-signed-url"\n')},logs:diagnosticLogs});
+assert.ok(diagnosticLogs.some(line=>line.includes('列表含独立字幕轨')));
+assert.ok(!diagnosticLogs.join('\n').includes('secret-signed-url'),'diagnostics never expose signed URLs or playlist bodies');
+console.log('Subscription F1 VOD passed: qualifying/practice/replay routing, native captions, legacy bridge migration and private diagnostics.');
 const mixedInput={data:{items:[
   {leagueShortName:'F1',feedName:'Race in 30',playables:[{
     ...condensedPlayable,recapType:undefined,canonicalMetadata:{leagueShortName:'F1'},
