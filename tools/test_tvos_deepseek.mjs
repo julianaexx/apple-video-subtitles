@@ -8,7 +8,13 @@ const rules = plugin.split(/\r?\n/).filter(line => line.startsWith('http-respons
   const { groups } = /script-path=(?<script>[^,]+).*?,tag=(?<tag>[^,]+)/.exec(options);
   return { pattern: new RegExp(pattern), ...groups };
 });
+const requestRules = plugin.split(/\r?\n/).filter(line => line.startsWith('http-request ')).map(line => {
+  const [, pattern, options] = line.split(' ', 3);
+  const { groups } = /script-path=(?<script>[^,]+).*?,tag=(?<tag>[^,]+)/.exec(options);
+  return { pattern: new RegExp(pattern), ...groups };
+});
 const mitmHosts = plugin.match(/^hostname = (.+)$/m)[1].split(', ');
+assert.ok(!mitmHosts.some(host => /^play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com$/.test(host)));
 const sportsRule = rules.find(({ tag }) => tag === 'F1.CC.NativeVTT');
 const raceRule = rules.find(({ tag }) => tag === 'F1.CC.RaceVTT');
 const runtime = readFileSync(new URL('../scripts/' + sportsRule.script.split('/').at(-1), import.meta.url), 'utf8');
@@ -76,7 +82,7 @@ for (const [host, program, asset] of [
 assert.equal(run(sports('hls-svod', 1001, 2001), vtt, 'F1.CC.NativeVTT'), undefined);
 assert.equal(apiCalls, 3, 'unregistered sports assets cannot call DeepSeek');
 assert.equal(run(uts, JSON.stringify({ league: { name: 'Formula 1' }, items: [{ hlsUrl: source }] }),
-  'F1.CC.Register'), undefined, 'Apple keeps the signed playback URL');
+  'F1.CC.Register'), undefined, 'qualifying and practice retain their native playback URL');
 assert.equal(run(sports('hls-svod', 1001, 2001), vtt, 'F1.CC.NativeVTT'), expected);
 
 const workout = 'https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/workout/P1_A2_en_subtitles_V2-0.webvtt';
@@ -101,5 +107,55 @@ for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 188167829
   assert.equal(captionDownloads - before, 1, 'matching segments reuse the pinned translation');
   const wrongMap = english.replace('MPEGTS:900000', 'MPEGTS:900001');
   assert.notEqual(run(alternate, wrongMap, 'F1.CC.RaceVTT'), preset);
+
+  const raceMaster = source.replace('id=1001&a=2001', 'id=' + program + '&a=' + asset);
+  const configured = JSON.parse(run(uts, JSON.stringify({assets:{hlsUrl:raceMaster}}), 'F1.CC.Register'));
+  const bridge = configured.assets.hlsUrl;
+  assert.equal(new URL(bridge).searchParams.get('src'), raceMaster);
+  const donor = 'https://play-edge-cdn.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/stream/playlist.m3u8'
+    + '?p=' + program + '&a=' + asset + '&mainAssetAdamId=' + asset + '&cdn=vod-ap-aoc.tv.apple.com';
+  const master = '#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",LANGUAGE="en",URI="' + donor + '"\n'
+    + '#EXT-X-STREAM-INF:SUBTITLES="subs"\n../video/index.m3u8\n';
+  function replayRequest(url, expected, target, reply, useURL = false) {
+    const matched = requestRules.filter(row => row.pattern.test(url));
+    assert.equal(matched.length, 1);
+    assert.ok(matched[0].tag.endsWith(expected + '.request'));
+    const relative = matched[0].script.split('/main/')[1];
+    const code = readFileSync(new URL('../' + relative, import.meta.url), 'utf8');
+    const results = [];
+    let deadline;
+    vm.runInNewContext(code, {
+      ...(useURL ? {URL} : {}),
+      $request:{url,headers:{}},
+      $httpClient:{get(options, callback) {
+        assert.equal(options.url, target);
+        if (reply !== null) callback(null, {status:200}, reply);
+      }},
+      $done: result => results.push(result),
+      setTimeout(callback) { deadline = callback; return 1; },
+      clearTimeout() {},
+    }, {timeout:1000});
+    if (!results.length && deadline) deadline();
+    assert.equal(results.length, 1);
+    return results[0].response;
+  }
+  const added = replayRequest(bridge, 'Master', raceMaster, master);
+  assert.equal(added.status, 200);
+  assert.ok(added.body.includes('NAME="简体中文"'));
+  assert.ok(added.body.includes('https://play-edge-cdn.itunes.apple.com/'));
+  const chinese = added.body.split('\n').find(line => line.includes('LANGUAGE="zh-Hans"')).match(/URI="([^"]+)"/)[1];
+  const segmentBase = alternate.replace('V2-99.webvtt', 'V2-');
+  const playlist = '#EXTM3U\n' + Array.from({length:raceCatalog[program + ':' + asset].segments},
+    (_, index) => '#EXTINF:60,\n' + segmentBase + index + '.webvtt').join('\n') + '\n#EXT-X-ENDLIST\n';
+  const sidecar = replayRequest(chinese, 'Playlist', donor, playlist);
+  assert.equal(sidecar.status, 200);
+  const hundredth = sidecar.body.split('\n').find(line => line.endsWith('/seg-100.webvtt'));
+  assert.equal(replayRequest(hundredth, 'Vtt', undefined, undefined, true).body, preset);
+  for (const bad of ['#EXTM3U\n', null]) {
+    const fallback = replayRequest(bridge, 'Master', raceMaster, bad);
+    assert.equal(fallback.status, 302);
+    assert.equal(fallback.headers.Location, raceMaster);
+  }
+  assert.equal(replayRequest(chinese, 'Playlist', donor, '#EXTM3U\n').headers.Location, donor);
 }
-console.log('Apple TV F1 host routing, native playback, and Fitness+ translation passed.');
+console.log('Apple TV iPhone-path race tracks, fallback, and Fitness+ translation passed.');

@@ -96,6 +96,31 @@ def caption_routes(lines, alternate, pairs):
     lines.insert(f1_rule + 1, f"http-response {alternate} {options}")
 
 
+def replay_bridge_files(lines):
+    files = {}
+    prefix = RAW + "/vendor/pinned/"
+    support = (ROOT / "tools/tvos_replay_bridge.js").read_text(encoding="utf-8")
+    for tag, inject in (("Master", "injectTrack"), ("Playlist", "injectPlaylist")):
+        indexes = [i for i, line in enumerate(lines)
+                   if ",tag=F1.Replay." in line and f".Track.{tag}.request," in line]
+        urls = {re.search(r"script-path=(https://[^,]+)", lines[i])[1] for i in indexes}
+        source_url, = urls
+        if not source_url.startswith(prefix):
+            raise ValueError("Unexpected iOS replay script")
+        source = (ROOT / "vendor/pinned" / source_url[len(prefix):]).read_text(encoding="utf-8")
+        # Reuse the exact iOS HLS edits and substitute the tvOS request wrapper.
+        source = source.split("\nfunction fail(status, body) {", 1)[0]
+        source = source.replace("new URL(", "new ReplayURL(")
+        source = source.replace(r"play(?:-edge)?\.itunes", r"play(?:-edge)?(?:-cdn)?\.itunes")
+        script = support + "\n" + source + f"\nrunReplayBridge({inject});\n"
+        digest = hashlib.sha256(script.encode("utf-8")).hexdigest()
+        path = f"scripts/apple-tv-replay-{tag.lower()}-{digest}.js"
+        files[path] = script
+        for i in indexes:
+            lines[i] = lines[i].replace(source_url, RAW + "/" + path).replace(",timeout=30,", ",timeout=6,")
+    return files
+
+
 def tvos_runtime(catalog, alternate):
     f1 = (ROOT / "scripts" / F1_SOURCE).read_text(encoding="utf-8")
     fitness = (ROOT / "scripts" / FITNESS_SOURCE).read_text(encoding="utf-8")
@@ -109,7 +134,11 @@ def tvos_runtime(catalog, alternate):
     f1 = replace_once(f1, "function appleStaticPlayback(value) {",
                       "function appleStaticPlayback(value, registerReplay) {")
     f1 = replace_once(f1, "    return bridge('/__f1_replay_master/' + replay.slug + '/index.m3u8', replay.revision);",
-                      "    registerReplay(value);\n    return value;")
+                      "    registerReplay(value);\n"
+                      "    const key = replay.programId + ':' + replay.assetId;\n"
+                      "    return APPLE_TV_RACE_CAPTIONS[key]\n"
+                      "      ? bridge('/__f1_replay_master/' + replay.slug + '/index.m3u8', replay.revision, value)\n"
+                      "      : value;")
     f1 = replace_once(f1, "const target=appleStaticPlayback(node[key]);",
                       "const target=appleStaticPlayback(node[key], registerVOD);")
     f1 = replace_once(
@@ -194,9 +223,10 @@ def build_files():
     )
     lines = add_f1(add_fitness(base, script_url), script_url).splitlines()
     caption_routes(lines, alternate, pairs)
+    bridges = replay_bridge_files(lines)
     lines[:2] = [
         "#!name=Apple TV 中文字幕（DeepSeek）",
-        "#!desc=正赛优先使用时间轴吻合的预制字幕。中文出现在英文轨。",
+        "#!desc=正赛沿用 iPhone 版预制字幕轨。添加字幕失败时回到原播放地址。",
     ]
     start = lines.index("[Argument]")
     end = lines.index("[Rewrite]")
@@ -209,6 +239,7 @@ def build_files():
         "loon/apple-tv-deepseek.plugin": "\n".join(lines) + "\n",
         "loon/apple-tv-deepseek-setup.txt": setup + "\n",
         f"scripts/{filename}": runtime,
+        **bridges,
     }
 
 
