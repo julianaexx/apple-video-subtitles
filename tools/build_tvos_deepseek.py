@@ -20,6 +20,10 @@ SETUP_PATTERN = (
 )
 SPORTS_ASSET_DIRECTORY = r"HLSSportsVodVideo\d+\/"
 HLS_HOST = r"hls(?:-amt|-svod)?\.itunes\.apple\.com"
+RACE_MASTER_HOSTS = (
+    "play.itunes.apple.com", "play-edge.itunes.apple.com",
+    "play-cdn.itunes.apple.com", "play-edge-cdn.itunes.apple.com",
+)
 CAPTION_FILENAME = (
     r"P(\d+)_A(\d+)_(en_subtitles[^/?#]*)-(\d+)\.(?:webvtt|vtt)(?:\?[^\s#]*)?$"
 )
@@ -96,6 +100,28 @@ def caption_routes(lines, alternate, pairs):
     lines.insert(f1_rule + 1, f"http-response {alternate} {options}")
 
 
+def add_race_track_rules(lines, catalog, script_url):
+    endpoint = (r"^https:\/\/play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com"
+                r"\/WebObjects\/MZPlayLocal\.woa\/hls\/subscription\/playlist\.m3u8")
+    matches = []
+    for key in catalog:
+        program, asset = key.split(":")
+        matches.append(
+            rf"(?=\?(?:[^&#]+&)*id={program}(?:&|$))"
+            rf"(?=\?(?:[^&#]+&)*a={asset}(?:&|$))"
+        )
+    master = endpoint + "(?:" + "|".join(matches) + r")\?[^#]+$"
+    sidecar = (r"^https:\/\/hls-amt\.itunes\.apple\.com\/__loon_race_zh\/v1\/"
+               r"\d+_\d+\/(?:index\.m3u8\?src=[^&]+|seg-\d{3}\.webvtt)$")
+    index = lines.index("[Script]") + 1
+    lines[index:index] = [
+        f"http-response {master} script-path={script_url},requires-body=true,max-size=2097152,timeout=2,tag=F1.RaceTrack.Master,enable=true",
+        f"http-request {sidecar} script-path={script_url},timeout=6,tag=F1.RaceTrack.Subtitle,enable=true",
+    ]
+    hosts = next(i for i, line in enumerate(lines) if line.startswith("hostname = "))
+    lines[hosts] += ", " + ", ".join(RACE_MASTER_HOSTS)
+
+
 def tvos_runtime(catalog, alternate):
     f1 = (ROOT / "scripts" / F1_SOURCE).read_text(encoding="utf-8")
     fitness = (ROOT / "scripts" / FITNESS_SOURCE).read_text(encoding="utf-8")
@@ -165,6 +191,8 @@ def tvos_runtime(catalog, alternate):
         + f"    const APPLE_TV_SPORTS_CAPTION = /{SPORTS_CAPTION}/;\n"
         + f"    const APPLE_TV_RACE_CAPTION = /{alternate}/;\n"
         + "    const APPLE_TV_RACE_CAPTIONS = " + json.dumps(catalog, separators=(",", ":")) + ";\n"
+        + indent((ROOT / "tools/tvos_race_tracks.js").read_text(encoding="utf-8"), "    ") + "\n"
+        + "    if (handleRaceTracks()) return;\n"
         + indent((ROOT / "tools/tvos_race_captions.js").read_text(encoding="utf-8"), "    ") + "\n"
         + "    if (/^https:\\/\\/hls-svod\\.itunes\\.apple\\.com\\//.test($request.url)\n"
           "        && !APPLE_TV_SPORTS_CAPTION.test($request.url)\n"
@@ -194,9 +222,10 @@ def build_files():
     )
     lines = add_f1(add_fitness(base, script_url), script_url).splitlines()
     caption_routes(lines, alternate, pairs)
+    add_race_track_rules(lines, catalog, script_url)
     lines[:2] = [
         "#!name=Apple TV 中文字幕（DeepSeek）",
-        "#!desc=正赛优先使用时间轴吻合的预制字幕。中文出现在英文轨。",
+        "#!desc=有预制字幕的正赛可选择独立的简体中文轨。其他场次按需翻译。",
     ]
     start = lines.index("[Argument]")
     end = lines.index("[Rewrite]")
