@@ -11,10 +11,6 @@ const rules = plugin.split(/\r?\n/).filter(line => line.startsWith('http-respons
 const mitmHosts = plugin.match(/^hostname = (.+)$/m)[1].split(', ');
 const sportsRule = rules.find(({ tag }) => tag === 'F1.CC.NativeVTT');
 const raceRule = rules.find(({ tag }) => tag === 'F1.CC.RaceVTT');
-const masterRule = rules.find(({ tag }) => tag === 'F1.RaceTrack.Master');
-const sidecarRule = new RegExp(plugin.split(/\r?\n/).find(
-  line => line.includes(',tag=F1.RaceTrack.Subtitle,'),
-).split(' ')[1]);
 const runtime = readFileSync(new URL('../scripts/' + sportsRule.script.split('/').at(-1), import.meta.url), 'utf8');
 const script = new vm.Script(runtime);
 assert.equal(runtime.match(/APPLE_TV_SPORTS_CAPTION = \/(.+)\/;/)[1], sportsRule.pattern.source);
@@ -27,26 +23,19 @@ const uts = 'https://uts-api.itunes.apple.com/uts/v3/sporting-events/f1';
 const store = new Map();
 let apiCalls = 0;
 let captionDownloads = 0;
-function run(url, body, expectedTag, playlist) {
+function run(url, body, expectedTag) {
   assert.ok(mitmHosts.includes(new URL(url).hostname));
-  if (body === undefined) assert.ok(sidecarRule.test(url));
-  else {
-    const matched = rules.filter(({ pattern }) => pattern.test(url));
-    assert.deepEqual(matched.map(({ tag }) => tag), [expectedTag]);
-    assert.equal(matched[0].script, sportsRule.script);
-  }
+  const matched = rules.filter(({ pattern }) => pattern.test(url));
+  assert.deepEqual(matched.map(({ tag }) => tag), [expectedTag]);
+  assert.equal(matched[0].script, sportsRule.script);
   const results = [];
   script.runInNewContext({
     $request: { url, headers: {} },
-    ...(body === undefined ? {} : { $response: { status: 200, body } }),
+    $response: { status: 200, body },
     $argument: { deepseek_key: 'sk-local-fixture' },
     $persistentStore: { read: key => store.get(key), write(value, key) { store.set(key, value); return true; } },
     $httpClient: {
       get({ url }, callback) {
-        if (playlist?.url === url) {
-          callback(null, { status: 200 }, playlist.body);
-          return;
-        }
         assert.ok(Object.values(raceCatalog).some(replay => replay.url === url));
         captionDownloads++;
         const path = url.split('/main/')[1];
@@ -67,7 +56,7 @@ function run(url, body, expectedTag, playlist) {
     $done: result => results.push(result),
   }, { timeout: 1000 });
   assert.equal(results.length, 1);
-  return results[0].response || results[0].body;
+  return results[0].body;
 }
 
 function sports(host, program, asset) {
@@ -94,8 +83,6 @@ const workout = 'https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/
 assert.equal(run(workout, vtt, 'Fitness.DeepSeek.VTT'), expected);
 assert.equal(apiCalls, 4, 'Fitness+ retains its own translation path and cache');
 
-assert.ok(!masterRule.pattern.test(source), 'unknown assets cannot receive a Chinese track');
-assert.ok(!masterRule.pattern.test(source.replace('subscription/playlist', 'subscription/key')));
 for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 1881678292]]) {
   store.clear();
   const { url } = raceCatalog[program + ':' + asset];
@@ -114,28 +101,5 @@ for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 188167829
   assert.equal(captionDownloads - before, 1, 'matching segments reuse the pinned translation');
   const wrongMap = english.replace('MPEGTS:900000', 'MPEGTS:900001');
   assert.notEqual(run(alternate, wrongMap, 'F1.CC.RaceVTT'), preset);
-
-  const appleMaster = source.replace('id=1001&a=2001', 'a=' + asset + '&id=' + program);
-  const donor = 'https://play-edge.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/stream/playlist.m3u8'
-    + '?p=' + program + '&a=' + asset + '&mainAssetAdamId=' + asset;
-  const originalMaster = '#EXTM3U\r\n#EXT-X-INDEPENDENT-SEGMENTS\r\n'
-    + '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",LANGUAGE="en",URI="' + donor + '"\r\n'
-    + '#EXT-X-STREAM-INF:SUBTITLES="subs"\r\noriginal-video.m3u8\r\n';
-  const newMaster = run(appleMaster, originalMaster, 'F1.RaceTrack.Master');
-  assert.ok(newMaster.includes('NAME="简体中文",LANGUAGE="zh-Hans"'));
-  assert.equal(newMaster.split('\r\n').filter(line => !line.includes('LANGUAGE="zh-Hans"')).join('\r\n'), originalMaster);
-  assert.equal(run(appleMaster, newMaster, 'F1.RaceTrack.Master'), undefined, 'no duplicate Chinese track');
-  const sidecar = /URI="(https:\/\/[^"]+\/__loon_race_zh\/[^"]+)"/.exec(newMaster)[1];
-  const segmentBase = alternate.replace('V2-99.webvtt', 'V2-');
-  const nativeSegments = Array.from({ length: raceCatalog[program + ':' + asset].segments },
-    (_, index) => '#EXTINF:60,\n' + segmentBase + index + '.webvtt').join('\n');
-  const playlistBody = '#EXTM3U\n#EXT-X-VERSION:5\n' + nativeSegments + '\n#EXT-X-ENDLIST\n';
-  const chinesePlaylist = run(sidecar, undefined, null, { url: donor, body: playlistBody });
-  assert.equal(chinesePlaylist.status, 200);
-  const hundredth = chinesePlaylist.body.split('\n').find(line => line.endsWith('/seg-100.webvtt'));
-  assert.equal(run(hundredth).body, preset);
-  const mismatch = run(sidecar, undefined, null, { url: donor, body: '#EXTM3U\n' });
-  assert.equal(mismatch.status, 302);
-  assert.equal(mismatch.headers.Location, donor);
 }
-console.log('Apple TV race tracks, native caption fallbacks, and Fitness+ translation passed.');
+console.log('Apple TV F1 host routing, native playback, and Fitness+ translation passed.');
