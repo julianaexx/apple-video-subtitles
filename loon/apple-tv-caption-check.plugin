@@ -1,10 +1,19 @@
 #!name=Apple TV 字幕请求诊断
-#!desc=选择原有英文字幕后检查画面标记。适用于 Loon 3.5.1 Build 983 或更新版本。
+#!desc=v2 检查英文字幕脚本和参数同步。在 iPhone 的此插件中填检查码 2468 后，在电视上播放英文字幕。
+
+[Argument]
+caption_check_code = input,"unset",type=string,tag=电视检查码,desc=在 iPhone 上改成 2468 以检查电视是否收到此插件的参数
+translation_provider = select,"deepseek","volcengine",tag=翻译服务,desc=Fitness+ 和 F1 共用；deepseek 为 DeepSeek，volcengine 为火山引擎机器翻译
+volc_access_key_id = input,"",type=string,tag=火山引擎 Access Key ID,desc=开通机器翻译后仅在 Loon 本地填写 AK
+volc_secret_access_key = input,"",type=string,tag=火山引擎 Secret Access Key,desc=仅在 Loon 本地填写 SK，勿分享含密钥的配置
+deepseek_key = input,"",type=string,tag=DeepSeek API Key,desc=仅在 Loon 本地填写密钥，勿分享含密钥的配置
 
 [Rewrite]
-response if ${url} ~= /^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_.\/-]+\/P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$/ && ${response.status} == 200 then response.body.replace(/(?m)^\d{2,}:\d{2}(?::\d{2})?\.\d{3}[ \t]+-->[^\r\n]*\r?\n(?=[^\r\n])/, "$0【现有字幕规则已匹配】 ")
-response if ${url} ~= /^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_.\/-]*P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?$/ && ${response.status} == 200 then response.body.replace(/(?m)^\d{2,}:\d{2}(?::\d{2})?\.\d{3}[ \t]+-->[^\r\n]*\r?\n(?=[^\r\n])/, "$0【现有字幕规则已匹配】 ")
 response if ${url} ~= /^(?!(?:https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_.\/-]+\/P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?|https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_.\/-]*P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?)$)https:\/\/hls(?:-amt|-svod)?\.itunes\.apple\.com\/itunes-assets\/[^?#]+\.(?:webvtt|vtt)(?:\?[^#]*)?$/ && ${response.status} == 200 then response.body.replace(/(?m)^\d{2,}:\d{2}(?::\d{2})?\.\d{3}[ \t]+-->[^\r\n]*\r?\n(?=[^\r\n])/, "$0【收到其他字幕地址】 ")
+
+[Script]
+http-response ^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$ script-path=https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/scripts/apple-tv-caption-check-v2.js,requires-body=true,max-size=65536,timeout=2,tag=CaptionCheck.F1.CC.NativeVTT,argument={caption_check_code,translation_provider,volc_access_key_id,volc_secret_access_key,deepseek_key},enable=true
+http-response ^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_./-]*P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?$ script-path=https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/scripts/apple-tv-caption-check-v2.js,requires-body=true,max-size=65536,timeout=2,tag=CaptionCheck.Fitness.DeepSeek.VTT,argument={caption_check_code,translation_provider,volc_access_key_id,volc_secret_access_key,deepseek_key},enable=true
 
 [MITM]
 hostname = hls.itunes.apple.com, hls-amt.itunes.apple.com, hls-svod.itunes.apple.com
