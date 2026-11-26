@@ -17,9 +17,11 @@ SETUP_PATTERN = (
     r"^https:\/\/(?:uts-api\.itunes\.apple\.com\/uts\/|"
     r"hls-svod\.itunes\.apple\.com\/itunes-assets\/[^?#]*_en_subtitles)"
 )
+SPORTS_ASSET_DIRECTORY = r"HLSSportsVodVideo\d+\/"
 SPORTS_CAPTION = (
     r"^https:\/\/hls(?:-amt|-svod)?\.itunes\.apple\.com\/itunes-assets\/"
-    r"HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/"
+    + SPORTS_ASSET_DIRECTORY
+    + r"v4\/[A-Za-z0-9_./-]+\/"
     r"P(\d+)_A(\d+)_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$"
 )
 
@@ -28,6 +30,18 @@ def replace_once(text, old, new):
     if text.count(old) != 1:
         raise ValueError(f"Unexpected Apple TV source: {old}")
     return text.replace(old, new, 1)
+
+
+def caption_routes(lines):
+    f1_rule, = (i for i, line in enumerate(lines) if ",tag=F1.CC.NativeVTT," in line)
+    _, _, options = lines[f1_rule].split(" ", 2)
+    lines[f1_rule] = f"http-response {SPORTS_CAPTION} {options}"
+
+    fitness_rule, = (i for i, line in enumerate(lines) if ",tag=Fitness.DeepSeek.VTT," in line)
+    asset_path = r"\/itunes-assets\/"
+    lines[fitness_rule] = replace_once(
+        lines[fitness_rule], asset_path, asset_path + f"(?!{SPORTS_ASSET_DIRECTORY})"
+    )
 
 
 def tvos_runtime():
@@ -111,6 +125,7 @@ def build_files():
     generated, _ = generate()
     base = generated["apple-video-subtitles.plugin"]
     lines = add_f1(add_fitness(base, script_url), script_url).splitlines()
+    caption_routes(lines)
     lines[:2] = [
         "#!name=Apple TV 中文字幕（DeepSeek）",
         "#!desc=Apple TV 正赛使用原始播放地址。补齐 F1 字幕域名和回放识别。中文出现在英文轨。",

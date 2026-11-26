@@ -20,6 +20,7 @@ if __name__ == '__main__':
         ['node', 'tools/test_fitness_deepseek.mjs'],
         ['node', 'tools/test_translation_service.mjs'],
         ['node', 'tools/test_f1_cc.mjs'],
+        ['node', 'tools/test_tvos_deepseek.mjs'],
     ]
     env = os.environ.copy()
     if args.jq:
