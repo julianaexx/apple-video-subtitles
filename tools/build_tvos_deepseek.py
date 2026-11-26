@@ -1,6 +1,7 @@
 """Build the separate Apple TV subscription and the private key setup line."""
 
 import hashlib
+import json
 from pathlib import Path
 import re
 from textwrap import indent
@@ -18,11 +19,15 @@ SETUP_PATTERN = (
     r"hls-svod\.itunes\.apple\.com\/itunes-assets\/[^?#]*_en_subtitles)"
 )
 SPORTS_ASSET_DIRECTORY = r"HLSSportsVodVideo\d+\/"
+HLS_HOST = r"hls(?:-amt|-svod)?\.itunes\.apple\.com"
+CAPTION_FILENAME = (
+    r"P(\d+)_A(\d+)_(en_subtitles[^/?#]*)-(\d+)\.(?:webvtt|vtt)(?:\?[^\s#]*)?$"
+)
 SPORTS_CAPTION = (
-    r"^https:\/\/hls(?:-amt|-svod)?\.itunes\.apple\.com\/itunes-assets\/"
+    r"^https:\/\/" + HLS_HOST + r"\/itunes-assets\/"
     + SPORTS_ASSET_DIRECTORY
     + r"v4\/[A-Za-z0-9_./-]+\/"
-    r"P(\d+)_A(\d+)_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$"
+    + CAPTION_FILENAME
 )
 
 
@@ -32,19 +37,66 @@ def replace_once(text, old, new):
     return text.replace(old, new, 1)
 
 
-def caption_routes(lines):
+def race_captions(base):
+    rules = base.splitlines()
+    playlist = next(line.split("script-path=", 1)[1].split(",", 1)[0] for line in rules
+                    if ",tag=F1.Replay.19-mexico.Track.Playlist.request," in line)
+    mirror = RAW + "/vendor/pinned/"
+    if not playlist.startswith(mirror):
+        raise ValueError("Unrecognized race playlist source")
+    data = (ROOT / "vendor/pinned" / playlist[len(mirror):]).read_text(encoding="utf-8")
+    configs = json.loads(re.search(r"^const replayConfigs = (.+);$", data, re.M)[1])
+    catalog = {}
+    for line in rules:
+        match = re.search(r"script-path=(https://[^,]+).*?,tag=F1\.Replay\.\d+-([a-z-]+)\.Track\.VTT\.request,",
+                          line, re.I)
+        if not match:
+            continue
+        url, slug = match.groups()
+        if not url.startswith(mirror) or slug not in configs:
+            raise ValueError(f"Missing pinned subtitle mapping for {slug}")
+        config = configs[slug]
+        tracks = config.get("subtitleTracks", {})
+        for program in config.get("programIds", [config["programId"]]):
+            catalog[f"{program}:{config['assetId']}"] = {
+                "track": tracks.get(program, r"en_subtitles_V\d+"),
+                "segments": config["expectedSegments"],
+                "revision": url[len(mirror):].split("/", 1)[0],
+                "url": url,
+            }
+    if not catalog:
+        raise ValueError("Missing pinned race captions")
+    return catalog
+
+
+def race_pairs(catalog):
+    return "|".join("P" + item.replace(":", "_A") for item in catalog)
+
+
+def race_caption_pattern(pairs):
+    # The HLS branch excludes requests already handled by the sports rule.
+    host = (rf"(?:{HLS_HOST}\/itunes-assets\/(?!{SPORTS_ASSET_DIRECTORY}v4\/)"
+            r"|vod-(?:ap|ak|fa)-amt\.tv\.apple\.com\/)")
+    return (r"^https:\/\/" + host + r"(?:[A-Za-z0-9_./-]+\/)?"
+            + f"(?=(?:{pairs})_)" + CAPTION_FILENAME)
+
+
+def caption_routes(lines, alternate, pairs):
     f1_rule, = (i for i, line in enumerate(lines) if ",tag=F1.CC.NativeVTT," in line)
     _, _, options = lines[f1_rule].split(" ", 2)
     lines[f1_rule] = f"http-response {SPORTS_CAPTION} {options}"
 
     fitness_rule, = (i for i, line in enumerate(lines) if ",tag=Fitness.DeepSeek.VTT," in line)
     asset_path = r"\/itunes-assets\/"
+    excluded_assets = rf"(?!{SPORTS_ASSET_DIRECTORY}|(?:[A-Za-z0-9_./-]+\/)?(?:{pairs})_en_subtitles)"
     lines[fitness_rule] = replace_once(
-        lines[fitness_rule], asset_path, asset_path + f"(?!{SPORTS_ASSET_DIRECTORY})"
+        lines[fitness_rule], asset_path, asset_path + excluded_assets
     )
+    options = options.replace(",tag=F1.CC.NativeVTT,", ",tag=F1.CC.RaceVTT,")
+    lines.insert(f1_rule + 1, f"http-response {alternate} {options}")
 
 
-def tvos_runtime():
+def tvos_runtime(catalog, alternate):
     f1 = (ROOT / "scripts" / F1_SOURCE).read_text(encoding="utf-8")
     fitness = (ROOT / "scripts" / FITNESS_SOURCE).read_text(encoding="utf-8")
     # Both released scripts begin with the same DeepSeek adapter.
@@ -63,7 +115,7 @@ def tvos_runtime():
     f1 = replace_once(
         f1,
         r"const match=/^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/P(\d+)_A(\d+)_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$/.exec(source);",
-        "const match=APPLE_TV_SPORTS_CAPTION.exec(source);",
+        "const match=APPLE_TV_SPORTS_CAPTION.exec(source) || APPLE_TV_RACE_CAPTION.exec(source);",
     )
     f1 = replace_once(f1, "const record=read('vod-'+hash(match[1]+':'+match[2]));",
                       """const [, program, asset] = match;
@@ -93,6 +145,15 @@ def tvos_runtime():
         "          registerVOD(source);\n",
         "",
     )
+    f1 = replace_once(
+        f1,
+        "if(nativeVTT(source)){log('F1 点播原生英文字幕');translate({body,native:true});return;}",
+        """if (nativeVTT(source)) {
+        const match = APPLE_TV_SPORTS_CAPTION.exec(source) || APPLE_TV_RACE_CAPTION.exec(source);
+        tvOSRaceCaption(match, body, finish, () => translate({body,native:true}));
+        return;
+      }""",
+    )
     entry = (ROOT / "tools/tvos_deepseek_entry.js").read_text(encoding="utf-8")
     return (
         "(function (configArgument) {\n"
@@ -102,8 +163,12 @@ def tvos_runtime():
           "  (function ($argument) {\n"
         + indent(adapter, "    ")
         + f"    const APPLE_TV_SPORTS_CAPTION = /{SPORTS_CAPTION}/;\n"
+        + f"    const APPLE_TV_RACE_CAPTION = /{alternate}/;\n"
+        + "    const APPLE_TV_RACE_CAPTIONS = " + json.dumps(catalog, separators=(",", ":")) + ";\n"
+        + indent((ROOT / "tools/tvos_race_captions.js").read_text(encoding="utf-8"), "    ") + "\n"
         + "    if (/^https:\\/\\/hls-svod\\.itunes\\.apple\\.com\\//.test($request.url)\n"
-          "        && !APPLE_TV_SPORTS_CAPTION.test($request.url)) {\n"
+          "        && !APPLE_TV_SPORTS_CAPTION.test($request.url)\n"
+          "        && !APPLE_TV_RACE_CAPTION.test($request.url)) {\n"
         + indent(fitness, "      ")
         + "      return;\n"
           "    }\n"
@@ -114,7 +179,12 @@ def tvos_runtime():
 
 
 def build_files():
-    runtime = tvos_runtime()
+    generated, _ = generate()
+    base = generated["apple-video-subtitles.plugin"]
+    catalog = race_captions(base)
+    pairs = race_pairs(catalog)
+    alternate = race_caption_pattern(pairs)
+    runtime = tvos_runtime(catalog, alternate)
     digest = hashlib.sha256(runtime.encode("utf-8")).hexdigest()
     filename = f"apple-tv-deepseek-{digest}.js"
     script_url = f"{RAW}/scripts/{filename}"
@@ -122,13 +192,11 @@ def build_files():
         f'http-request {SETUP_PATTERN} script-path={script_url},'
         'timeout=2,tag=AppleTV.DeepSeek.Key,argument="PASTE_DEEPSEEK_KEY_HERE",enable=true'
     )
-    generated, _ = generate()
-    base = generated["apple-video-subtitles.plugin"]
     lines = add_f1(add_fitness(base, script_url), script_url).splitlines()
-    caption_routes(lines)
+    caption_routes(lines, alternate, pairs)
     lines[:2] = [
         "#!name=Apple TV 中文字幕（DeepSeek）",
-        "#!desc=Apple TV 正赛使用原始播放地址。补齐 F1 字幕域名和回放识别。中文出现在英文轨。",
+        "#!desc=正赛优先使用时间轴吻合的预制字幕。中文出现在英文轨。",
     ]
     start = lines.index("[Argument]")
     end = lines.index("[Rewrite]")

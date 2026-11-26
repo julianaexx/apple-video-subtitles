@@ -10,15 +10,19 @@ const rules = plugin.split(/\r?\n/).filter(line => line.startsWith('http-respons
 });
 const mitmHosts = plugin.match(/^hostname = (.+)$/m)[1].split(', ');
 const sportsRule = rules.find(({ tag }) => tag === 'F1.CC.NativeVTT');
+const raceRule = rules.find(({ tag }) => tag === 'F1.CC.RaceVTT');
 const runtime = readFileSync(new URL('../scripts/' + sportsRule.script.split('/').at(-1), import.meta.url), 'utf8');
 const script = new vm.Script(runtime);
 assert.equal(runtime.match(/APPLE_TV_SPORTS_CAPTION = \/(.+)\/;/)[1], sportsRule.pattern.source);
+assert.equal(runtime.match(/APPLE_TV_RACE_CAPTION = \/(.+)\/;/)[1], raceRule.pattern.source);
+const raceCatalog = JSON.parse(runtime.match(/^\s*const APPLE_TV_RACE_CAPTIONS = (.+);$/m)[1]);
 
 const vtt = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nWelcome back.\n';
 const source = 'https://play-edge-cdn.itunes.apple.com/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8?id=1001&a=2001&t=fixture';
 const uts = 'https://uts-api.itunes.apple.com/uts/v3/sporting-events/f1';
 const store = new Map();
 let apiCalls = 0;
+let captionDownloads = 0;
 function run(url, body, expectedTag) {
   assert.ok(mitmHosts.includes(new URL(url).hostname));
   const matched = rules.filter(({ pattern }) => pattern.test(url));
@@ -31,6 +35,12 @@ function run(url, body, expectedTag) {
     $argument: { deepseek_key: 'sk-local-fixture' },
     $persistentStore: { read: key => store.get(key), write(value, key) { store.set(key, value); return true; } },
     $httpClient: {
+      get({ url }, callback) {
+        assert.ok(Object.values(raceCatalog).some(replay => replay.url === url));
+        captionDownloads++;
+        const path = url.split('/main/')[1];
+        callback(null, { status: 200 }, readFileSync(new URL('../' + path, import.meta.url), 'utf8'));
+      },
       post(options, callback) {
         assert.equal(options.url, 'https://api.deepseek.com/chat/completions');
         assert.equal(options.headers.Authorization, 'Bearer sk-local-fixture');
@@ -72,4 +82,24 @@ assert.equal(run(sports('hls-svod', 1001, 2001), vtt, 'F1.CC.NativeVTT'), expect
 const workout = 'https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/workout/P1_A2_en_subtitles_V2-0.webvtt';
 assert.equal(run(workout, vtt, 'Fitness.DeepSeek.VTT'), expected);
 assert.equal(apiCalls, 4, 'Fitness+ retains its own translation path and cache');
+
+for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 1881678292]]) {
+  store.clear();
+  const { url } = raceCatalog[program + ':' + asset];
+  const assetCode = readFileSync(new URL('../' + url.split('/main/')[1], import.meta.url), 'utf8');
+  const preset = JSON.parse(assetCode.match(/^const subtitles = (.+);$/m)[1])['100'];
+  const timing = preset.match(/^\d+:[\d:.]+ --> [^\r\n]+/gm);
+  const english = 'WEBVTT\nX-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:900000\n\n'
+    + timing.map(line => line + '\nOriginal English.').join('\n\n') + '\n\n';
+  const segment = 'P' + program + '_A' + asset + '_en_subtitles_V2-99.webvtt';
+  const alternate = 'https://vod-ap-amt.tv.apple.com/alternate/path/' + segment;
+  const legacyHls = 'https://hls-svod.itunes.apple.com/itunes-assets/legacy/path/' + segment;
+  const before = captionDownloads;
+  assert.equal(run(alternate, english, 'F1.CC.RaceVTT'), preset);
+  assert.equal(run(legacyHls, english, 'F1.CC.RaceVTT'), preset);
+  assert.equal(run(sports('hls', program, asset).replace('V2-0.', 'V2-99.'), english, 'F1.CC.NativeVTT'), preset);
+  assert.equal(captionDownloads - before, 1, 'matching segments reuse the pinned translation');
+  const wrongMap = english.replace('MPEGTS:900000', 'MPEGTS:900001');
+  assert.notEqual(run(alternate, wrongMap, 'F1.CC.RaceVTT'), preset);
+}
 console.log('Apple TV F1 host routing, native playback, and Fitness+ translation passed.');
