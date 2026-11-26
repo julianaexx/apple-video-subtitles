@@ -1,0 +1,10 @@
+#!name=Apple TV 字幕请求诊断
+#!desc=选择原有英文字幕后检查画面标记。适用于 Loon 3.5.1 Build 983 或更新版本。
+
+[Rewrite]
+response if ${url} ~= /^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_.\/-]+\/P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$/ && ${response.status} == 200 then response.body.replace(/(?m)^\d{2,}:\d{2}(?::\d{2})?\.\d{3}[ \t]+-->[^\r\n]*\r?\n(?=[^\r\n])/, "$0【现有字幕规则已匹配】 ")
+response if ${url} ~= /^https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_.\/-]*P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?$/ && ${response.status} == 200 then response.body.replace(/(?m)^\d{2,}:\d{2}(?::\d{2})?\.\d{3}[ \t]+-->[^\r\n]*\r?\n(?=[^\r\n])/, "$0【现有字幕规则已匹配】 ")
+response if ${url} ~= /^(?!(?:https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_.\/-]+\/P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?|https:\/\/hls-svod\.itunes\.apple\.com\/itunes-assets\/[A-Za-z0-9_.\/-]*P\d+_A\d+_en_subtitles[^\/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^#]*)?)$)https:\/\/hls(?:-amt|-svod)?\.itunes\.apple\.com\/itunes-assets\/[^?#]+\.(?:webvtt|vtt)(?:\?[^#]*)?$/ && ${response.status} == 200 then response.body.replace(/(?m)^\d{2,}:\d{2}(?::\d{2})?\.\d{3}[ \t]+-->[^\r\n]*\r?\n(?=[^\r\n])/, "$0【收到其他字幕地址】 ")
+
+[MITM]
+hostname = hls.itunes.apple.com, hls-amt.itunes.apple.com, hls-svod.itunes.apple.com
