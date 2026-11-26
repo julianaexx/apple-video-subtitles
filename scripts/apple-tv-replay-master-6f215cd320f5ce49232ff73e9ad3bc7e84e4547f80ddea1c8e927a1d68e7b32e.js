@@ -1,0 +1,208 @@
+// Supply the subset of the URL API used by the pinned replay scripts on tvOS.
+function ReplayURL(value, base) {
+  if (typeof URL === 'function') return new URL(value, base);
+  let raw = String(value);
+  if (base && !/^[a-z][a-z\d+.-]*:/i.test(raw)) {
+    const parent = new ReplayURL(base);
+    if (raw.startsWith('//')) raw = parent.protocol + raw;
+    else if (raw.startsWith('?')) raw = parent.origin + parent.pathname + raw;
+    else {
+      const path = raw.startsWith('/') ? raw : parent.pathname.replace(/[^/]*$/, '') + raw;
+      const split = path.search(/[?#]/);
+      const suffix = split < 0 ? '' : path.slice(split);
+      const segments = [];
+      for (const part of (split < 0 ? path : path.slice(0, split)).split('/').slice(1)) {
+        if (part === '..') segments.pop();
+        else if (part !== '.') segments.push(part);
+      }
+      raw = parent.origin + '/' + segments.join('/') + suffix;
+    }
+  }
+  const parts = /^([a-z][a-z\d+.-]*:)\/\/([^\s/?#]+)(\/[^?#]*)?(?:\?([^#]*))?(?:#.*)?$/i.exec(raw);
+  if (!parts) throw new Error('Invalid HLS URL');
+  this.protocol = parts[1].toLowerCase();
+  this.hostname = parts[2].toLowerCase();
+  this.origin = this.protocol + '//' + parts[2];
+  this.pathname = parts[3] || '/';
+  this.searchParams = {
+    get(key) {
+      for (const field of (parts[4] || '').split('&')) {
+        const at = field.indexOf('=');
+        if (at >= 0 && decodeURIComponent(field.slice(0, at)) === key) {
+          return decodeURIComponent(field.slice(at + 1).replace(/\+/g, ' '));
+        }
+      }
+      return null;
+    },
+  };
+  this.toString = () => raw;
+}
+
+function runReplayBridge(inject) {
+  const config = requestConfig($request.url);
+  const upstream = config && sourceUrl(queryValue($request.url, 'src'), config);
+  const type = 'application/vnd.apple.mpegurl';
+  if (!upstream) {
+    $done({response:{status:400, headers:{'Cache-Control':'no-store'}, body:''}});
+    return;
+  }
+  let finished = false;
+  const timer = setTimeout(() => finish(null), 16500);
+  function finish(body) {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    const headers = {'Content-Type':type, 'Cache-Control':'no-store'};
+    if (typeof body !== 'string') headers.Location = upstream;
+    $done({response:{status:typeof body === 'string' ? 200 : 302, headers,
+      body:typeof body === 'string' ? body : ''}});
+  }
+  try {
+    $httpClient.get({url:upstream, headers:upstreamHeaders(), timeout:16000,
+      'auto-redirect':false, 'auto-cookie':false}, (error, response, text) => {
+      if (finished) return;
+      if (error || !response || Number(response.status) !== 200 || typeof text !== 'string') {
+        finish(null);
+        return;
+      }
+      let injected = null;
+      try { injected = inject(text, upstream, config); } catch (_) {}
+      // A missing English track must never prevent native Apple playback.
+      finish(typeof injected === 'string' ? injected : text);
+    });
+  } catch (_) {
+    finish(null);
+  }
+}
+
+// Surge request script for exact F1 replay synthetic masters. Native
+// video/audio/subtitle resources remain on their original Apple hosts.
+const replayConfigs = {"australia":{"programId":"1337486392","assetId":"1881724926","revision":"f1aur22m1","stableRenditionId":"australia-2026-r22-zh-hans-m1"},"china":{"programId":"1337522687","assetId":"1881777941","revision":"f1cnr21m2","stableRenditionId":"china-2026-r21-zh-hans-m2"},"japan":{"programId":"1326620577","assetId":"1881763666","revision":"f1jpr20m1","stableRenditionId":"japan-2026-r20-zh-hans-m1"},"miami":{"programId":"1364568578","assetId":"1881733891","revision":"f1mir20m1","stableRenditionId":"miami-2026-r20-zh-hans-m1"},"canada":{"programId":"1392837560","assetId":"1881753363","revision":"f1car20m1","stableRenditionId":"canada-2026-r20-zh-hans-m1"},"monaco":{"programId":"1411825097","assetId":"1881742204","revision":"f1mcr25m1","stableRenditionId":"monaco-2026-r25-zh-hans-m1"},"barcelona-catalunya":{"programId":"1413846083","assetId":"1881690171","revision":"f1bar17m1","stableRenditionId":"barcelona-catalunya-2026-r17-zh-hans-m1"},"austria":{"programId":"1429344944","assetId":"1882150267","revision":"f1atr22m1","stableRenditionId":"austria-2026-r22-zh-hans-m1"},"great-britain":{"programId":"1436852938","assetId":"1881739464","revision":"f1gbr26m1","stableRenditionId":"great-britain-2026-r26-zh-hans-m1"},"belgium":{"programId":"1457248952","assetId":"1881786635","revision":"f1ber12m1","stableRenditionId":"belgium-2026-r12-zh-hans-m1"},"hungary":{"programId":"1461869625","assetId":"1881700068","revision":"f1hur32m1","stableRenditionId":"hungary-2026-r32-zh-hans-m1"},"netherlands":{"programId":"1478680801","assetId":"1882152939","revision":"f1ntr23m1","stableRenditionId":"netherlands-2026-r23-zh-hans-m1"},"spain":{"programId":"1497835498","assetId":"1881721455","revision":"f1spr22m1","stableRenditionId":"spain-2026-r22-zh-hans-m1"},"azerbaijan":{"programId":"1509835184","assetId":"1882094604","revision":"azr1-76f792623176","stableRenditionId":"azerbaijan-2026-r1-76f792623176"},"bahrain-malaysia":{"programId":"1526866852","programIds":["1526866852","1529375473"],"assetId":"6819360836","revision":"bhm1-57ce7a36cff3","stableRenditionId":"bahrain-malaysia-2026-r1-zh-hans-57ce7a36cff3"},"singapore":{"programId":"1525529454","assetId":"1881782888","revision":"20261024r7","stableRenditionId":"sg-zh-Hans-20261024r7"},"united-states":{"programId":"1536601273","assetId":"1881678292","revision":"20261107r6","stableRenditionId":"us-2026-zh-standard-r6"},"mexico":{"programId":"1543396071","assetId":"1882105309","revision":"f1mx20261117r6","stableRenditionId":"mx-2026-standard-r6-zh-Hans"},"sao-paulo":{"programId":"1549722223","assetId":"1881773247","revision":"f1sp20261123r1-74233bf75e98","stableRenditionId":"sao-paulo-2026-standard-r1-zh-Hans"}};
+
+const replaySlugPattern = Object.keys(replayConfigs).join("|");
+
+function requestConfig(value) {
+  try {
+    const url = new ReplayURL(value);
+    const match = url.pathname.match(new RegExp(`^/__f1_replay_master/(${replaySlugPattern})/index\\.m3u8$`));
+    if (!match) return null;
+    const config = replayConfigs[match[1]];
+    if (match[1] === "azerbaijan" && (url.hostname.toLowerCase() !== "hls-amt.itunes.apple.com" || url.searchParams.get("rev") !== config.revision)) return null;
+    if (match[1] === "bahrain-malaysia" && (url.hostname.toLowerCase() !== "hls-amt.itunes.apple.com" || url.searchParams.get("rev") !== config.revision)) return null;
+    return { slug: match[1], ...config };
+  } catch (_) { return null; }
+}
+
+function queryValue(url, key) {
+  try { return new ReplayURL(url).searchParams.get(key) || ""; } catch (_) { return ""; }
+}
+
+function sourceUrl(value, config) {
+  try {
+    const url = new ReplayURL(value);
+    if (
+      url.protocol !== "https:" ||
+      !/^play(?:-edge)?(?:-cdn)?\.itunes\.apple\.com$/i.test(url.hostname) ||
+      url.pathname !== "/WebObjects/MZPlayLocal.woa/hls/subscription/playlist.m3u8" ||
+      !(config.programIds || [config.programId]).includes(url.searchParams.get("id")) ||
+      url.searchParams.get("a") !== config.assetId
+    ) return null;
+    return url.toString();
+  } catch (_) {
+    return null;
+  }
+}
+
+function absoluteUrl(value, baseUrl) {
+  try { return new ReplayURL(value, baseUrl).toString(); } catch (_) { return value; }
+}
+
+function quotedAttribute(line, name) {
+  return line.match(new RegExp(`${name}="([^"]+)"`))?.[1] || null;
+}
+
+function setAttribute(line, name, value, quoted = false) {
+  const pattern = new RegExp(`${name}=(?:"[^"]*"|[^,]*)`);
+  const rendered = `${name}=${quoted ? `"${value}"` : value}`;
+  return pattern.test(line) ? line.replace(pattern, rendered) : `${line},${rendered}`;
+}
+
+function removeAttribute(line, name) {
+  const pattern = new RegExp(`,${name}=(?:"[^"]*"|[^,]*)`);
+  return line.replace(pattern, "");
+}
+
+function absoluteizeMaster(lines, baseUrl) {
+  return lines.map((line) => {
+    if (!line) return line;
+    if (!line.startsWith("#")) return absoluteUrl(line, baseUrl);
+    return line.replace(/([A-Z0-9-]*URI)="([^"]+)"/g, (_, name, value) =>
+      `${name}="${absoluteUrl(value, baseUrl)}"`,
+    );
+  });
+}
+
+function chineseRowsForGroup(lines, group, baseUrl, config) {
+  const rows = lines.filter((line) =>
+    line.startsWith("#EXT-X-MEDIA:") &&
+    line.includes("TYPE=SUBTITLES") &&
+    quotedAttribute(line, "GROUP-ID") === group &&
+    quotedAttribute(line, "FORCED") !== "YES" &&
+    /^en(?:-|$)/i.test(quotedAttribute(line, "LANGUAGE") || ""),
+  );
+  const byPathway = new Map();
+  for (const row of rows) {
+    const pathway = quotedAttribute(row, "PATHWAY-ID") || "__default__";
+    if (!byPathway.has(pathway)) byPathway.set(pathway, row);
+  }
+  if (!byPathway.size) return null;
+  return [...byPathway.values()].map((row) => {
+    const donor = absoluteUrl(quotedAttribute(row, "URI") || "", baseUrl);
+    if (!/^https:\/\//i.test(donor)) return null;
+    let output = setAttribute(row, "LANGUAGE", "zh-Hans", true);
+    output = setAttribute(output, "NAME", "简体中文", true);
+    output = removeAttribute(output, "CHARACTERISTICS");
+    output = setAttribute(output, "DEFAULT", "NO");
+    output = setAttribute(output, "AUTOSELECT", "YES");
+    output = setAttribute(output, "FORCED", "NO");
+    output = setAttribute(output, "ASSOC-LANGUAGE", "zh", true);
+    output = setAttribute(output, "STABLE-RENDITION-ID", config.stableRenditionId, true);
+    const playlist = `https://hls-amt.itunes.apple.com/__f1_replay_zh/${config.slug}/index.m3u8?rev=${config.revision}&src=${encodeURIComponent(donor)}`;
+    return setAttribute(output, "URI", playlist, true);
+  });
+}
+
+function injectTrack(body, baseUrl, config) {
+  if (
+    typeof body !== "string" ||
+    !body.startsWith("#EXTM3U") ||
+    !body.includes("#EXT-X-STREAM-INF:")
+  ) return null;
+  const lines = body.replace(/\r/g, "").split("\n");
+  if (lines.some((line) => line.includes(`STABLE-RENDITION-ID="${config.stableRenditionId}"`))) {
+    return absoluteizeMaster(lines, baseUrl).join("\n");
+  }
+  const groups = [...new Set(lines
+    .filter((line) => line.startsWith("#EXT-X-STREAM-INF:"))
+    .map((line) => quotedAttribute(line, "SUBTITLES"))
+    .filter(Boolean))];
+  if (!groups.length) return null;
+  const chineseRows = groups.flatMap((group) => chineseRowsForGroup(lines, group, baseUrl, config) || []);
+  if (!chineseRows.length) return null;
+  const firstSubtitle = lines.findIndex((line) =>
+    line.startsWith("#EXT-X-MEDIA:") && line.includes("TYPE=SUBTITLES"),
+  );
+  if (firstSubtitle < 0) return null;
+  lines.splice(firstSubtitle, 0, ...chineseRows);
+  return absoluteizeMaster(lines, baseUrl).join("\n");
+}
+
+function upstreamHeaders() {
+  const output = {};
+  for (const [key, value] of Object.entries($request.headers || {})) {
+    if (!/^(?:host|content-length|accept-encoding|range)$/i.test(key)) output[key] = value;
+  }
+  return output;
+}
+
+runReplayBridge(injectTrack);
