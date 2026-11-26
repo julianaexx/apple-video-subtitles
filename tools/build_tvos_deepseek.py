@@ -17,6 +17,11 @@ SETUP_PATTERN = (
     r"^https:\/\/(?:uts-api\.itunes\.apple\.com\/uts\/|"
     r"hls-svod\.itunes\.apple\.com\/itunes-assets\/[^?#]*_en_subtitles)"
 )
+SPORTS_CAPTION = (
+    r"^https:\/\/hls(?:-amt|-svod)?\.itunes\.apple\.com\/itunes-assets\/"
+    r"HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/"
+    r"P(\d+)_A(\d+)_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$"
+)
 
 
 def replace_once(text, old, new):
@@ -41,10 +46,39 @@ def tvos_runtime():
                       "    registerReplay(value);\n    return value;")
     f1 = replace_once(f1, "const target=appleStaticPlayback(node[key]);",
                       "const target=appleStaticPlayback(node[key], registerVOD);")
+    f1 = replace_once(
+        f1,
+        r"const match=/^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/P(\d+)_A(\d+)_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$/.exec(source);",
+        "const match=APPLE_TV_SPORTS_CAPTION.exec(source);",
+    )
+    f1 = replace_once(f1, "const record=read('vod-'+hash(match[1]+':'+match[2]));",
+                      """const [, program, asset] = match;
+    if (APPLE_STATIC_CATALOG.replays.some(row => row.programId === program && row.assetId === asset)) return true;
+    // Verified Las Vegas Race in 30 asset, which can play from a cached page.
+    if (program === '1560312730' && asset === '6837919154') return true;
+    const record=read('vod-'+hash(program+':'+asset));""")
     f1 = replace_once(f1, "if(!service.ready||!masterSource(source))return false;",
                       "if(!/^https:\\/\\/play(?:-edge)?(?:-cdn)?\\.itunes\\.apple\\.com\\//.test(source)"
                       "||!masterSource(source))return false;")
     f1 = f1.replace(r"play(?:-edge)?\.itunes", r"play(?:-edge)?(?:-cdn)?\.itunes")
+    f1 = replace_once(f1, "const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1';",
+                      """const f1 = inherited || [node, meta].some(item =>
+        [item.leagueShortName, item.leagueName, item.league?.shortName, item.league?.name]
+          .some(name => typeof name === 'string' && /^(?:F1|Formula\\s*1)$/i.test(name.trim()))
+      );""")
+    f1 = replace_once(f1, "if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){",
+                      """if (f1 && typeof node.hlsUrl === 'string') registerVOD(node.hlsUrl);
+      if (f1 && node.assets && typeof node.assets.hlsUrl === 'string') {
+        registerVOD(node.assets.hlsUrl);
+      }
+      if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){""")
+    f1 = replace_once(
+        f1,
+        "          // Register the asset, without changing Apple's signed playback URL.\n"
+        "          // Only its observed native English WebVTT responses may be translated.\n"
+        "          registerVOD(source);\n",
+        "",
+    )
     entry = (ROOT / "tools/tvos_deepseek_entry.js").read_text(encoding="utf-8")
     return (
         "(function (configArgument) {\n"
@@ -53,7 +87,9 @@ def tvos_runtime():
           "  if (!args) return;\n"
           "  (function ($argument) {\n"
         + indent(adapter, "    ")
-        + "    if (/^https:\\/\\/hls-svod\\.itunes\\.apple\\.com\\//.test($request.url)) {\n"
+        + f"    const APPLE_TV_SPORTS_CAPTION = /{SPORTS_CAPTION}/;\n"
+        + "    if (/^https:\\/\\/hls-svod\\.itunes\\.apple\\.com\\//.test($request.url)\n"
+          "        && !APPLE_TV_SPORTS_CAPTION.test($request.url)) {\n"
         + indent(fitness, "      ")
         + "      return;\n"
           "    }\n"
@@ -77,12 +113,15 @@ def build_files():
     lines = add_f1(add_fitness(base, script_url), script_url).splitlines()
     lines[:2] = [
         "#!name=Apple TV 中文字幕（DeepSeek）",
-        "#!desc=Apple TV 正赛使用原始播放地址。F1 和 Fitness+ 的中文出现在英文轨。",
+        "#!desc=Apple TV 正赛使用原始播放地址。补齐 F1 字幕域名和回放识别。中文出现在英文轨。",
     ]
     start = lines.index("[Argument]")
     end = lines.index("[Rewrite]")
     lines[start:end] = ["# DeepSeek setup: " + RAW + "/loon/apple-tv-deepseek-setup.txt", ""]
     lines = [re.sub(r",argument=\{[^}]+\}", "", line) for line in lines]
+    hosts = next(index for index, line in enumerate(lines) if line.startswith("hostname = "))
+    if "hls.itunes.apple.com" not in lines[hosts].partition(" = ")[2].split(", "):
+        lines[hosts] += ", hls.itunes.apple.com"
     return {
         "loon/apple-tv-deepseek.plugin": "\n".join(lines) + "\n",
         "loon/apple-tv-deepseek-setup.txt": setup + "\n",

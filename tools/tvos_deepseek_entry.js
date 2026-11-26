@@ -19,6 +19,12 @@ function tvOSDeepSeekArguments(argument) {
     return null;
   }
 
+  const directKey = argument && typeof argument === 'object'
+    ? String(argument.deepseek_key || '').trim() : '';
+  if (/^sk-[A-Za-z0-9_-]+$/.test(directKey)) {
+    return { translation_provider: 'deepseek', deepseek_key: directKey };
+  }
+
   let deepseekKey = '';
   try {
     deepseekKey = $persistentStore.read(storeKey) || '';
