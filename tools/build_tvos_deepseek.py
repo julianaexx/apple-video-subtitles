@@ -16,7 +16,8 @@ F1_SOURCE = "f1-cc-deepseek-40ce902d4016e848f3c95f934b3054fde56f3cd648e5617d06e7
 FITNESS_SOURCE = "fitness-deepseek-0868308dce63fd05d2d7c751a8c7e9e862624acc8fd504c3b903585e8ac1df5a.js"
 SETUP_PATTERN = (
     r"^https:\/\/(?:uts-api\.itunes\.apple\.com\/uts\/|"
-    r"hls-svod\.itunes\.apple\.com\/itunes-assets\/[^?#]*_en_subtitles)"
+    r"(?:hls(?:-amt|-svod)?\.itunes\.apple\.com\/itunes-assets\/|"
+    r"vod-(?:ap|ak|fa)-amt\.tv\.apple\.com\/)[^?#]*_en_subtitles)"
 )
 SPORTS_ASSET_DIRECTORY = r"HLSSportsVodVideo\d+\/"
 HLS_HOST = r"hls(?:-amt|-svod)?\.itunes\.apple\.com"
@@ -244,7 +245,7 @@ def build_files():
     filename = f"apple-tv-deepseek-{digest}.js"
     script_url = f"{RAW}/scripts/{filename}"
     setup = (
-        f'http-request {SETUP_PATTERN} script-path={script_url},'
+        f'http-request {SETUP_PATTERN} script-path={RAW}/scripts/apple-tv-deepseek-key.js,'
         'timeout=2,tag=AppleTV.DeepSeek.Key,argument="PASTE_DEEPSEEK_KEY_HERE",enable=true'
     )
     lines = add_f1(add_fitness(base, script_url), script_url).splitlines()

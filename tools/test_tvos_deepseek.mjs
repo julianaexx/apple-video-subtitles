@@ -31,7 +31,7 @@ const uts = 'https://uts-api.itunes.apple.com/uts/v3/sporting-events/f1';
 const store = new Map();
 let apiCalls = 0;
 let captionDownloads = 0;
-function run(url, body, expectedTag) {
+function run(url, body, expectedTag, argument = {deepseek_key: 'sk-local-fixture'}) {
   assert.ok(mitmHosts.includes(new URL(url).hostname));
   const matched = rules.filter(({ pattern }) => pattern.test(url));
   assert.deepEqual(matched.map(({ tag }) => tag), [expectedTag]);
@@ -40,7 +40,7 @@ function run(url, body, expectedTag) {
   script.runInNewContext({
     $request: { url, headers: {} },
     $response: { status: 200, body },
-    $argument: { deepseek_key: 'sk-local-fixture' },
+    $argument: argument,
     $persistentStore: { read: key => store.get(key), write(value, key) { store.set(key, value); return true; } },
     $httpClient: {
       get({ url }, callback) {
@@ -73,6 +73,54 @@ function sports(host, program, asset) {
 }
 
 const expected = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n欢迎回来。\n\n';
+if (nativeReplays) {
+  const setupRule = readFileSync(new URL('../loon/apple-tv-deepseek-setup.txt', import.meta.url), 'utf8').trim();
+  const setupPattern = new RegExp(setupRule.split(' ')[1]);
+  const setupPath = setupRule.match(/script-path=[^,]+\/main\/(scripts\/[^,]+)/)[1];
+  const setupScript = new vm.Script(readFileSync(new URL('../' + setupPath, import.meta.url), 'utf8'));
+  const key = 'sk-local-fixture';
+  function configure(url, argument, failWrite = false) {
+    assert.ok(setupPattern.test(url));
+    const results = [], logs = [];
+    setupScript.runInNewContext({
+      $request: {url}, $argument: argument,
+      $persistentStore: {
+        read: name => store.get(name),
+        write(value, name) { if (failWrite) throw Error('storage'); store.set(name, value); return true; },
+      },
+      console: {log: text => logs.push(text)},
+      $done: value => results.push(value),
+    });
+    assert.equal(results.length, 1);
+    assert.deepEqual(Object.keys(results[0]), []);
+    assert.ok(!logs.join('\n').includes(key));
+    return logs.join('\n');
+  }
+  const alternateCaption = host => 'https://' + host + '.tv.apple.com/path/P1543396071_A1882105309_en_subtitles_V2-0.webvtt';
+  for (const url of [
+    uts,
+    ...['hls', 'hls-amt', 'hls-svod'].map(host => sports(host, 1560312730, 6837919154)),
+    ...['vod-ap-amt', 'vod-ak-amt', 'vod-fa-amt'].map(alternateCaption),
+  ]) {
+    store.clear();
+    assert.ok(mitmHosts.includes(new URL(url).hostname));
+    assert.match(configure(url, key), /已保存/);
+    assert.equal(store.get('apple-tv-deepseek-api-key'), key);
+    const before = apiCalls;
+    assert.equal(run(sports('hls-amt', 1560312730, 6837919154), vtt, 'F1.CC.NativeVTT', {deepseek_key:''}), expected);
+    assert.equal(apiCalls, before + 1, 'ready reads the private main-config key before translating');
+    assert.equal(configure(url, key), '', 'repeated caption requests do not repeat the write');
+  }
+  assert.equal(setupPattern.test(source), false);
+  assert.equal(setupPattern.test('https://example.com/path_en_subtitles.webvtt'), false);
+  configure(uts, 'PASTE_DEEPSEEK_KEY_HERE');
+  assert.equal(store.get('apple-tv-deepseek-api-key'), key);
+  configure(uts, 'clear');
+  assert.equal(store.get('apple-tv-deepseek-api-key'), undefined);
+  assert.match(configure(uts, key, true), /失败/);
+  store.clear();
+  apiCalls = 0;
+}
 for (const [host, program, asset] of [
   ['hls', 1543396071, 1882105309],
   ['hls-amt', 1536601273, 1881678292],
