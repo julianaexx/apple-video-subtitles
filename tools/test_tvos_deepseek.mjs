@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const plugin = readFileSync(process.argv[2] ?? new URL('../loon/apple-tv-deepseek.plugin', import.meta.url), 'utf8');
+const nativeReplays = process.argv[2] === '--native';
+const defaultPlugin = nativeReplays ? '../apple-tv-deepseek-ready.plugin' : '../loon/apple-tv-deepseek.plugin';
+const plugin = readFileSync(process.argv[nativeReplays ? 3 : 2] ?? new URL(defaultPlugin, import.meta.url), 'utf8');
 const rules = plugin.split(/\r?\n/).filter(line => line.startsWith('http-response ')).map(line => {
   const [, pattern, options] = line.split(' ', 3);
   const { groups } = /script-path=(?<script>[^,]+).*?,tag=(?<tag>[^,]+)/.exec(options);
@@ -89,6 +91,19 @@ const workout = 'https://hls-svod.itunes.apple.com/itunes-assets/HLSVideo126/v4/
 assert.equal(run(workout, vtt, 'Fitness.DeepSeek.VTT'), expected);
 assert.equal(apiCalls, 4, 'Fitness+ retains its own translation path and cache');
 
+if (nativeReplays) {
+  for (const pair of Object.keys(raceCatalog)) {
+    const [program, asset] = pair.split(':');
+    for (const host of ['play', 'play-edge', 'play-cdn', 'play-edge-cdn']) {
+      const url = source.replace('play-edge-cdn.', host + '.')
+        .replace('id=1001&a=2001&t=fixture', `a=${asset}&id=${program}&t=fixture%2B%2F%3D`);
+      assert.equal(run(uts, JSON.stringify({assets:{hlsUrl:url}}), 'F1.CC.Register'), undefined,
+        `Apple's signed race playlist must pass through for ${pair} on ${host}`);
+    }
+  }
+  assert.equal(requestRules.some(({tag}) => /^F1\.Replay\..*\.Track\.Master\.request$/.test(tag)), false);
+}
+
 for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 1881678292]]) {
   store.clear();
   const { url } = raceCatalog[program + ':' + asset];
@@ -109,6 +124,33 @@ for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 188167829
   assert.notEqual(run(alternate, wrongMap, 'F1.CC.RaceVTT'), preset);
 
   const raceMaster = source.replace('id=1001&a=2001', 'id=' + program + '&a=' + asset);
+  if (nativeReplays) {
+    const slug = program === 1543396071 ? 'mexico' : 'united-states';
+    const legacyPath = `https://hls-amt.itunes.apple.com/__f1_replay_master/${slug}/index.m3u8`;
+    const signed = raceMaster.replace('t=fixture', 't=fixture%2B%2F%3D');
+    const legacy = legacyPath + '?rev=old&src=' + encodeURIComponent(signed);
+    const output = run(uts, JSON.stringify({assets:{hlsUrl:legacy}}), 'F1.CC.Register');
+    assert.equal(JSON.parse(output).assets.hlsUrl, signed);
+    function runLegacy(url) {
+      const matched = requestRules.filter(({pattern}) => pattern.test(url));
+      assert.deepEqual(matched.map(({tag}) => tag), ['AppleTV.LegacyReplay']);
+      assert.equal(matched[0].script, sportsRule.script);
+      const results = [];
+      script.runInNewContext({
+        $request:{url, headers:{}},
+        $persistentStore:{read: () => undefined},
+        $httpClient:{get() { assert.fail('Cached replays must go straight to Apple'); }},
+        $done: result => results.push(result),
+      }, {timeout:1000});
+      assert.equal(results.length, 1);
+      return results[0];
+    }
+    assert.equal(runLegacy(legacy).url, signed);
+    assert.equal(runLegacy(legacyPath).response.status, 400);
+    assert.equal(runLegacy(legacy + '&src=' + encodeURIComponent(signed)).response.status, 400);
+    assert.equal(runLegacy(legacyPath + '?src=' + encodeURIComponent(signed.replace('play-edge-cdn.itunes.apple.com', 'example.com'))).response.status, 400);
+    continue;
+  }
   const configured = JSON.parse(run(uts, JSON.stringify({assets:{hlsUrl:raceMaster}}), 'F1.CC.Register'));
   const bridge = configured.assets.hlsUrl;
   assert.equal(new URL(bridge).searchParams.get('src'), raceMaster);
@@ -158,4 +200,6 @@ for (const [program, asset] of [[1543396071, 1882105309], [1536601273, 188167829
   }
   assert.equal(replayRequest(chinese, 'Playlist', donor, '#EXTM3U\n').headers.Location, donor);
 }
-console.log('Apple TV iPhone-path race tracks, fallback, and Fitness+ translation passed.');
+console.log(nativeReplays
+  ? 'Apple TV native race playback, cached URL recovery, and caption translation passed.'
+  : 'Apple TV iPhone-path race tracks, fallback, and Fitness+ translation passed.');

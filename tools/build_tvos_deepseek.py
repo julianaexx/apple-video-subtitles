@@ -29,6 +29,7 @@ SPORTS_CAPTION = (
     + r"v4\/[A-Za-z0-9_./-]+\/"
     + CAPTION_FILENAME
 )
+LEGACY_REPLAY = r"^https:\/\/hls-amt\.itunes\.apple\.com\/__f1_replay_master\/[a-z-]+\/index\.m3u8(?:\?([^#\s]+))?$"
 
 
 def replace_once(text, old, new):
@@ -121,7 +122,7 @@ def replay_bridge_files(lines):
     return files
 
 
-def tvos_runtime(catalog, alternate):
+def tvos_runtime(catalog, alternate, *, native_replays=False):
     f1 = (ROOT / "scripts" / F1_SOURCE).read_text(encoding="utf-8")
     fitness = (ROOT / "scripts" / FITNESS_SOURCE).read_text(encoding="utf-8")
     # Both released scripts begin with the same DeepSeek adapter.
@@ -133,12 +134,14 @@ def tvos_runtime(catalog, alternate):
     f1 = marker + f1
     f1 = replace_once(f1, "function appleStaticPlayback(value) {",
                       "function appleStaticPlayback(value, registerReplay) {")
+    replay_route = "    return value;" if native_replays else (
+        "    const key = replay.programId + ':' + replay.assetId;\n"
+        "    return APPLE_TV_RACE_CAPTIONS[key]\n"
+        "      ? bridge('/__f1_replay_master/' + replay.slug + '/index.m3u8', replay.revision, value)\n"
+        "      : value;"
+    )
     f1 = replace_once(f1, "    return bridge('/__f1_replay_master/' + replay.slug + '/index.m3u8', replay.revision);",
-                      "    registerReplay(value);\n"
-                      "    const key = replay.programId + ':' + replay.assetId;\n"
-                      "    return APPLE_TV_RACE_CAPTIONS[key]\n"
-                      "      ? bridge('/__f1_replay_master/' + replay.slug + '/index.m3u8', replay.revision, value)\n"
-                      "      : value;")
+                      "    registerReplay(value);\n" + replay_route)
     f1 = replace_once(f1, "const target=appleStaticPlayback(node[key]);",
                       "const target=appleStaticPlayback(node[key], registerVOD);")
     f1 = replace_once(
@@ -183,6 +186,28 @@ def tvos_runtime(catalog, alternate):
         return;
       }""",
     )
+    legacy = ""
+    if native_replays:
+        legacy = (f"const APPLE_TV_LEGACY_REPLAY = /{LEGACY_REPLAY}/;\n"
+                  + (ROOT / "tools/tvos_native_replay.js").read_text(encoding="utf-8"))
+        f1 = replace_once(f1, "if (typeof value !== 'string') return value;",
+                          "if (typeof value !== 'string') return value;\n"
+                          "  const originalReplay = tvOSOriginalReplay(value);\n"
+                          "  if (originalReplay) {\n"
+                          "    registerReplay(originalReplay);\n"
+                          "    return originalReplay;\n"
+                          "  }")
+        f1 = replace_once(f1, "    const main=/^https:",
+                          "    if (APPLE_TV_LEGACY_REPLAY.test(source)) {\n"
+                          "      const original = tvOSOriginalReplay(source);\n"
+                          "      if (original) finish({url:original});\n"
+                          "      else send('Reload this race in Apple TV', 'text/plain', 400);\n"
+                          "      return;\n"
+                          "    }\n"
+                          "    const main=/^https:")
+        f1 = replace_once(f1, "const VERSION='f1cc-20261125a'", "const VERSION='tvos-native-20261126b'")
+        f1 = replace_once(f1, "if (APPLE_STATIC_CATALOG.replays.some(row => row.programId === program && row.assetId === asset)) return true;",
+                          "if (APPLE_TV_RACE_CAPTIONS[program + ':' + asset]) return true;")
     entry = (ROOT / "tools/tvos_deepseek_entry.js").read_text(encoding="utf-8")
     return (
         "(function (configArgument) {\n"
@@ -194,6 +219,7 @@ def tvos_runtime(catalog, alternate):
         + f"    const APPLE_TV_SPORTS_CAPTION = /{SPORTS_CAPTION}/;\n"
         + f"    const APPLE_TV_RACE_CAPTION = /{alternate}/;\n"
         + "    const APPLE_TV_RACE_CAPTIONS = " + json.dumps(catalog, separators=(",", ":")) + ";\n"
+        + (indent(legacy, "    ") + "\n" if legacy else "")
         + indent((ROOT / "tools/tvos_race_captions.js").read_text(encoding="utf-8"), "    ") + "\n"
         + "    if (/^https:\\/\\/hls-svod\\.itunes\\.apple\\.com\\//.test($request.url)\n"
           "        && !APPLE_TV_SPORTS_CAPTION.test($request.url)\n"
@@ -235,10 +261,33 @@ def build_files():
     hosts = next(index for index, line in enumerate(lines) if line.startswith("hostname = "))
     if "hls.itunes.apple.com" not in lines[hosts].partition(" = ")[2].split(", "):
         lines[hosts] += ", hls.itunes.apple.com"
+    native_runtime = tvos_runtime(catalog, alternate, native_replays=True)
+    native_digest = hashlib.sha256(native_runtime.encode("utf-8")).hexdigest()
+    native_filename = f"apple-tv-deepseek-{native_digest}.js"
+    native_url = f"{RAW}/scripts/{native_filename}"
+    native_lines = [
+        line.replace(script_url + ",", native_url + ",argument={deepseek_key},")
+        for line in lines if ",tag=F1.Replay." not in line or ".Track.Master.request," not in line
+    ]
+    native_lines[:3] = [
+        "#!name=Apple TV 中文字幕（原生播放 20261127）",
+        "#!desc=正赛使用 Apple 原始播放地址。选择英文字幕轨可显示中文。",
+        "# Generated by tools/build_tvos_deepseek.py. Do not edit.",
+    ]
+    setup_comment = next(i for i, line in enumerate(native_lines) if line.startswith("# DeepSeek setup:"))
+    native_lines[setup_comment:setup_comment + 1] = [
+        "[Argument]",
+        'deepseek_key = input,"",type=string,tag=DeepSeek API Key',
+    ]
+    native_lines.insert(native_lines.index("[Script]") + 1,
+                        f"http-request {LEGACY_REPLAY} script-path={native_url},"
+                        "timeout=2,tag=AppleTV.LegacyReplay,enable=true")
     return {
         "loon/apple-tv-deepseek.plugin": "\n".join(lines) + "\n",
+        "apple-tv-deepseek-ready.plugin": "\n".join(native_lines) + "\n",
         "loon/apple-tv-deepseek-setup.txt": setup + "\n",
         f"scripts/{filename}": runtime,
+        f"scripts/{native_filename}": native_runtime,
         **bridges,
     }
 
