@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const nativeReplays = process.argv[2] === '--native';
-const defaultPlugin = nativeReplays ? '../apple-tv-deepseek-ready.plugin' : '../loon/apple-tv-deepseek.plugin';
+const defaultPlugin = nativeReplays ? '../loon/apple-tv-deepseek-ready.plugin' : '../loon/apple-tv-deepseek.plugin';
 const plugin = readFileSync(process.argv[nativeReplays ? 3 : 2] ?? new URL(defaultPlugin, import.meta.url), 'utf8');
 const rules = plugin.split(/\r?\n/).filter(line => line.startsWith('http-response ')).map(line => {
   const [, pattern, options] = line.split(' ', 3);

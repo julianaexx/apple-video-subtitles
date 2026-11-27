@@ -284,7 +284,7 @@ def build_files():
                         "timeout=2,tag=AppleTV.LegacyReplay,enable=true")
     return {
         "loon/apple-tv-deepseek.plugin": "\n".join(lines) + "\n",
-        "apple-tv-deepseek-ready.plugin": "\n".join(native_lines) + "\n",
+        "loon/apple-tv-deepseek-ready.plugin": "\n".join(native_lines) + "\n",
         "loon/apple-tv-deepseek-setup.txt": setup + "\n",
         f"scripts/{filename}": runtime,
         f"scripts/{native_filename}": native_runtime,
