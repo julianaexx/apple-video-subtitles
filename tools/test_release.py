@@ -67,26 +67,19 @@ class UnifiedReleaseTests(unittest.TestCase):
             self.assertTrue(filename.endswith('-' + digest + '.js'))
         self.assertEqual(self.files, release_files(ROOT / 'config/release.json'))
 
-    def test_live_media_and_caption_segments_match_the_same_apple_paths(self):
-        rules = {tag: next(line.split(' ', 2)[1] for line in self.plugin.splitlines()
-                          if 'tag=F1.CC.' + tag + ',' in line)
-                 for tag in ('Media', 'Observe')}
-        for delivery in ('Live', 'CatchUp'):
-            for cdn in ('ak', 'ap', 'fa'):
-                root = ('https://linear-' + cdn + '-p-har-prod-a.tv.apple.com/Content/HLS_CBC/'
-                        + delivery + '/Channel(name=f1,startTime=0)/Stream(04)/')
-                self.assertRegex(root + 'index.m3u8?token=example', rules['Media'])
-                self.assertRegex(root + 'Segment(123).m4v?token=example', rules['Observe'])
-                self.assertIsNone(re.search(rules['Observe'], root + 'init.mp4'))
+    def test_native_live_media_is_not_decrypted_or_intercepted(self):
+        rules = [line.split(' ', 2)[1] for line in self.plugin.splitlines() if line.startswith('http-')]
+        hosts = self.plugin.split('hostname = ', 1)[1].strip().split(', ')
+        self.assertNotIn('tag=F1.CC.Media,', self.plugin)
+        self.assertNotIn('tag=F1.CC.Observe,', self.plugin)
+        self.assertFalse(any(host.startswith('linear-') for host in hosts))
         for host in ('linear-ap-p-har-prod-a.tv.apple.com', 'linear-fa-p-har-prod-a.tv.apple.com',
                      'linear-ap-b-har-prod-a.tv.apple.com'):
             root = 'https://' + host + '/Content/HLS_CBC/Live/channel(f1-set2-tv-f1tv)/'
-            self.assertRegex(root + '08_1p1.m3u8', rules['Media'])
-            self.assertRegex(root + '20261119T233651-08-82825456.m4v', rules['Observe'])
-            for filename in ('20261119T233651-17-82825456.m4a',
+            for filename in ('08_1p1.m3u8', '20261119T233651-08-82825456.m4v',
+                             '20261119T233651-17-82825456.m4a',
                              '20261119T233651-stream08-initSection.m4i'):
-                self.assertIsNone(re.search(rules['Observe'], root + filename))
-            self.assertIn(host, self.plugin.split('hostname = ', 1)[1].strip().split(', '))
+                self.assertFalse(any(re.search(pattern, root + filename) for pattern in rules))
         self.assertNotIn('f1.rexchen.si', self.files['scripts/f1-cc-deepseek.js'])
 
     def test_static_subtitles_are_complete_and_served_by_our_repository(self):

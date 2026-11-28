@@ -577,12 +577,12 @@ console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolli
   const hash=text=>{let h=2166136261;for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);return(h>>>0).toString(16);};
   const slot='f1cc-segment-'+(parseInt(hash(sample.source),16)%128);
   const rawCapture=new URL('../build/live-capture/segment.m4v',import.meta.url);
+  const captionSources={};
   if(existsSync(rawCapture)){
     store.delete(slot);
     const bytes=new Uint8Array(readFileSync(rawCapture));
     assert.deepEqual(JSON.parse(JSON.stringify(library.cc.extract(bytes))),data);
-    assert.deepEqual(run(sample.source,bytes),{},'captured video bytes pass through unchanged');
-    assert.ok(JSON.parse(store.get(slot)).body.includes('Racing Bulls'));
+    captionSources[sample.source]=bytes;
   }else{
     store.set(slot,JSON.stringify({version:runtimeVersion,url:sample.source,data,continued:false,
       body:library.cc.webvtt(data,decoded.cues),at:Date.now()}));
@@ -590,8 +590,9 @@ console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolli
   clearTranslations();
   const segment=subtitles.body.split('\n').find(line=>line.includes(encodeURIComponent(sample.source)));
   assert.ok(segment);
-  const translated=run(segment,null,{request:true}).response.body;
+  const translated=run(segment,null,{request:true,sources:captionSources}).response.body;
+  assert.ok(JSON.parse(store.get(slot)).body.includes('Racing Bulls'));
   assert.ok(translated.includes('你好'));
   assert.ok(translated.includes('X-TIMESTAMP-MAP='));
-  console.log('Recorded F1 live passed: 108 variants, 39 iframes, 18 audio tracks, ap-b backup, actual rolling URLs and captured CC translation.');
+  console.log('Recorded F1 live passed: native media untouched, 108 variants, 39 iframes, 18 audio tracks, separate CC fetch and translation.');
 }
