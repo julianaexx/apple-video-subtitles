@@ -539,3 +539,59 @@ const nonF1Live={airingType:'Live',canonicalMetadata:{leagueShortName:'NFL'},ass
 assert.deepEqual(run(uts,JSON.stringify(nonF1Live)),{});
 assert.ok(!runtime.includes('f1.rexchen.si'));
 console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolling windows, DeepSeek, finalization and native fallbacks.');
+
+// Recorded live differs from CatchUp: lowercase channel, no Stream directory,
+// timestamped segment names, and an ap-b backup pathway.
+{
+  const fixture=JSON.parse(readFileSync(new URL('../tests/fixtures/f1-live-layout.json',import.meta.url),'utf8'));
+  const capturedMasterURL=masterURL.replace('generic-event','captured-live');
+  const page={airingType:'Live',assets:{hlsUrl:capturedMasterURL}};
+  const capturedBridge=JSON.parse(run(uts,JSON.stringify(page)).body).assets.hlsUrl;
+  const full=run(capturedBridge,null,{request:true,sources:{[capturedMasterURL]:fixture.master}}).response;
+  assert.equal(full.status,200);
+  assert.equal((full.body.match(/#EXT-X-STREAM-INF:/g)||[]).length,108);
+  assert.equal((full.body.match(/#EXT-X-I-FRAME-STREAM-INF:/g)||[]).length,39);
+  assert.equal((full.body.match(/TYPE=AUDIO/g)||[]).length,18);
+  assert.equal((full.body.match(/TYPE=SUBTITLES/g)||[]).length,3);
+  assert.ok(full.body.includes('linear-ap-b-har-prod-a.tv.apple.com'));
+  // Replay the recorded 08 rendition, for which the capture includes CC packets.
+  const lines=fixture.master.split('\n'),rendition=[];
+  for(let i=0;i<lines.length;i++){
+    if(lines[i].startsWith('#EXT-X-STREAM-INF:')){
+      const keep=lines[i+1].endsWith('/08_1p1.m3u8');
+      if(keep)rendition.push(lines[i],lines[i+1]);
+      i++;
+    }else rendition.push(lines[i]);
+  }
+  const selected=run(capturedBridge,null,{request:true,sources:{[capturedMasterURL]:rendition.join('\n')}}).response.body;
+  const subtitleRow=selected.split('\n').find(line=>line.includes('TYPE=SUBTITLES')&&line.includes('PATHWAY-ID="fa-p"'));
+  const subtitleList=/URI="([^"]+)"/.exec(subtitleRow)[1];
+  const nativeList=fixture.sample.source.replace(/[^/]+$/,'08_1p1.m3u8');
+  const subtitles=run(subtitleList,null,{request:true,sources:{[nativeList]:fixture.media}}).response;
+  assert.equal(subtitles.status,200);
+  assert.ok(!subtitles.body.includes('#EXT-X-ENDLIST'));
+  assert.ok(!subtitles.body.includes('skd://'));
+  const sample=fixture.sample,data=sample.data,decoded=library.cc.decode(data,null);
+  assert.equal(data.frames.length,180);
+  assert.ok(decoded.cues.some(cue=>cue.text.includes('Racing Bulls')));
+  const hash=text=>{let h=2166136261;for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);return(h>>>0).toString(16);};
+  const slot='f1cc-segment-'+(parseInt(hash(sample.source),16)%128);
+  const rawCapture=new URL('../build/live-capture/segment.m4v',import.meta.url);
+  if(existsSync(rawCapture)){
+    store.delete(slot);
+    const bytes=new Uint8Array(readFileSync(rawCapture));
+    assert.deepEqual(JSON.parse(JSON.stringify(library.cc.extract(bytes))),data);
+    assert.deepEqual(run(sample.source,bytes),{},'captured video bytes pass through unchanged');
+    assert.ok(JSON.parse(store.get(slot)).body.includes('Racing Bulls'));
+  }else{
+    store.set(slot,JSON.stringify({version:runtimeVersion,url:sample.source,data,continued:false,
+      body:library.cc.webvtt(data,decoded.cues),at:Date.now()}));
+  }
+  clearTranslations();
+  const segment=subtitles.body.split('\n').find(line=>line.includes(encodeURIComponent(sample.source)));
+  assert.ok(segment);
+  const translated=run(segment,null,{request:true}).response.body;
+  assert.ok(translated.includes('你好'));
+  assert.ok(translated.includes('X-TIMESTAMP-MAP='));
+  console.log('Recorded F1 live passed: 108 variants, 39 iframes, 18 audio tracks, ap-b backup, actual rolling URLs and captured CC translation.');
+}

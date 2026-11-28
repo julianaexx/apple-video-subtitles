@@ -78,6 +78,15 @@ class UnifiedReleaseTests(unittest.TestCase):
                 self.assertRegex(root + 'index.m3u8?token=example', rules['Media'])
                 self.assertRegex(root + 'Segment(123).m4v?token=example', rules['Observe'])
                 self.assertIsNone(re.search(rules['Observe'], root + 'init.mp4'))
+        for host in ('linear-ap-p-har-prod-a.tv.apple.com', 'linear-fa-p-har-prod-a.tv.apple.com',
+                     'linear-ap-b-har-prod-a.tv.apple.com'):
+            root = 'https://' + host + '/Content/HLS_CBC/Live/channel(f1-set2-tv-f1tv)/'
+            self.assertRegex(root + '08_1p1.m3u8', rules['Media'])
+            self.assertRegex(root + '20261119T233651-08-82825456.m4v', rules['Observe'])
+            for filename in ('20261119T233651-17-82825456.m4a',
+                             '20261119T233651-stream08-initSection.m4i'):
+                self.assertIsNone(re.search(rules['Observe'], root + filename))
+            self.assertIn(host, self.plugin.split('hostname = ', 1)[1].strip().split(', '))
         self.assertNotIn('f1.rexchen.si', self.files['scripts/f1-cc-deepseek.js'])
 
     def test_static_subtitles_are_complete_and_served_by_our_repository(self):

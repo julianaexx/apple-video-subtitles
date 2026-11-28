@@ -1,6 +1,6 @@
 // F1 live/catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261129a', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261129b', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
@@ -28,7 +28,7 @@
     }
     return value;
   }
-  function native(value){return /^https:\/\/linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com\/Content\/HLS_CBC\/(?:Live|CatchUp)\/Channel\(/.test(value||'');}
+  function native(value){return /^https:\/\/linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com\/Content\/HLS_CBC\/(?:Live\/channel\([^/?#\s)]+\)\/|(?:Live|CatchUp)\/Channel\([^/?#\s)]+\)\/Stream\(\d+\)\/)/.test(value||'');}
   function attrs(line){const o={},r=/(?:^|,)([A-Z0-9-]+)=(?:"([^"]*)"|([^,]*))/g;let m;while((m=r.exec(line.slice(line.indexOf(':')+1))))o[m[1]]=m[2]===undefined?m[3]:m[2];return o;}
   function resource(key,kind){return PREFIX+key+'/'+kind;}
   function send(body,type,status){finish({response:{status:status||200,headers:{'Content-Type':type,'Cache-Control':'no-store'},body}});}
