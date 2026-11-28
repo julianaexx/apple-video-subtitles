@@ -67,6 +67,19 @@ class UnifiedReleaseTests(unittest.TestCase):
             self.assertTrue(filename.endswith('-' + digest + '.js'))
         self.assertEqual(self.files, release_files(ROOT / 'config/release.json'))
 
+    def test_live_media_and_caption_segments_match_the_same_apple_paths(self):
+        rules = {tag: next(line.split(' ', 2)[1] for line in self.plugin.splitlines()
+                          if 'tag=F1.CC.' + tag + ',' in line)
+                 for tag in ('Media', 'Observe')}
+        for delivery in ('Live', 'CatchUp'):
+            for cdn in ('ak', 'ap', 'fa'):
+                root = ('https://linear-' + cdn + '-p-har-prod-a.tv.apple.com/Content/HLS_CBC/'
+                        + delivery + '/Channel(name=f1,startTime=0)/Stream(04)/')
+                self.assertRegex(root + 'index.m3u8?token=example', rules['Media'])
+                self.assertRegex(root + 'Segment(123).m4v?token=example', rules['Observe'])
+                self.assertIsNone(re.search(rules['Observe'], root + 'init.mp4'))
+        self.assertNotIn('f1.rexchen.si', self.files['scripts/f1-cc-deepseek.js'])
+
     def test_static_subtitles_are_complete_and_served_by_our_repository(self):
         urls = set(re.findall(r'script-path=(https://[^,\s]+)', self.plugin))
         prefix = 'https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/'

@@ -35,7 +35,7 @@ def build(base, script_url):
     at = lines.index("[Script]") + 1
     arguments = ',argument={' + TRANSLATION_ARGUMENTS + ',f1_wait},enable=true'
     linear = r'linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com'
-    content = r'\/Content\/HLS_CBC\/CatchUp\/Channel\([^\s]+\/Stream\(\d+\)\/'
+    content = r'\/Content\/HLS_CBC\/(?:Live|CatchUp)\/Channel\([^\s]+\/Stream\(\d+\)\/'
     rules = [
         r'http-response ^https:\/\/uts-api\.itunes\.apple\.com\/uts\/(?:v1|v2|v3)\/ '
         + 'script-path=' + script_url + ',requires-body=true,max-size=0,timeout=2,tag=F1.CC.Register' + arguments,
@@ -59,7 +59,7 @@ def build(base, script_url):
     if set(hosts) & {'play.itunes.apple.com', 'play-edge.itunes.apple.com', 'linear.tv.apple.com'}:
         raise ValueError('shared playback/license hosts must not be intercepted')
     lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ / F1 可选翻译'
-    lines[1] = '#!desc=20261125a；F1 订阅点播含排位及练习回放改用原生英文字幕翻译；细化 CC 列表诊断；保留原生播放及 Music 兼容'
+    lines[1] = '#!desc=20261129a；F1 直播直接读取 Apple 原生播放地址及英文 CC，使用自填 DeepSeek 等翻译服务；支持滚动字幕；保留点播、Fitness+ 及 Music 兼容'
     return '\n'.join(lines) + '\n'
 
 

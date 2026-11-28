@@ -1,6 +1,6 @@
-// Experimental generic F1 catch-up CC sidecar. Does not alter media bytes.
+// F1 live/catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261125a', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261129a', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
@@ -28,7 +28,7 @@
     }
     return value;
   }
-  function native(value){return /^https:\/\/linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com\/Content\/HLS_CBC\/CatchUp\/Channel\(/.test(value||'');}
+  function native(value){return /^https:\/\/linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com\/Content\/HLS_CBC\/(?:Live|CatchUp)\/Channel\(/.test(value||'');}
   function attrs(line){const o={},r=/(?:^|,)([A-Z0-9-]+)=(?:"([^"]*)"|([^,]*))/g;let m;while((m=r.exec(line.slice(line.indexOf(':')+1))))o[m[1]]=m[2]===undefined?m[3]:m[2];return o;}
   function resource(key,kind){return PREFIX+key+'/'+kind;}
   function send(body,type,status){finish({response:{status:status||200,headers:{'Content-Type':type,'Cache-Control':'no-store'},body}});}
@@ -81,14 +81,20 @@
     function walk(node,inherited,condensed){
       if(!node||typeof node!=='object')return;
       const meta=node.canonicalMetadata||{};
-      const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1';
+      const source=node.assets&&node.assets.hlsUrl;
+      const live=node.airingType==='Live';
+      // Apple supplies the current signed URL; no third-party event API is needed.
+      const f1Reference=typeof source==='string'&&masterSource(source)
+        &&/^ref-umc\.cmr\.f1live\.[A-Za-z0-9_.-]+$/.test(identity(source)||'');
+      const f1=inherited||meta.leagueShortName==='F1'||meta.leagueName==='Formula 1'
+        ||(live&&f1Reference);
       // Subscription VOD and linear CatchUp have different subtitle pipelines.
       // Keep signed VOD playback native, including qualifying and practice.
       condensed=condensed||/^condensed$/i.test(node.recapType||'')
         ||[node.title,node.shortTitle,node.feedName,meta.title,meta.shortTitle]
           .some(value=>typeof value==='string'&&/\brace\s+in\s+30\b/i.test(value));
-      if(f1&&node.assets&&typeof node.assets.hlsUrl==='string'&&node.airingType==='OnDemand'){
-        const source=node.assets.hlsUrl,key=identity(source);
+      if(f1&&typeof source==='string'&&(node.airingType==='OnDemand'||live)){
+        const key=identity(source);
         const vod=condensed||/^https:\/\/play(?:-edge)?\.itunes\.apple\.com\//.test(source);
         if(vod){
           skipped++;
@@ -99,7 +105,7 @@
         // Keep FairPlay certificate, nonce and license URLs exactly as Apple sent them.
         if(!vod&&key&&masterSource(source)&&service.ready){
           const token=hash(key);
-          if(write('event-'+token,{identity:key,source,at:Date.now()})){
+          if(write('event-'+token,{identity:key,source,live,at:Date.now()})){
             node.assets.hlsUrl=resource(token,'master.m3u8');changed++;
           }
         }
@@ -118,7 +124,7 @@
     }
     staticWalk(data);walk(data,false,false);
     if(skipped)log('F1 点播保留原生播放 '+skipped+' 项，英文 WebVTT 按资源翻译');
-    log('静态字幕/F1 回放路由 '+changed+' 项，许可证地址不改写');
+    log('静态字幕/F1 直播及回放路由 '+changed+' 项，许可证地址不改写');
     return changed?JSON.stringify(data):null;
   }
   function master(body,base){
@@ -139,7 +145,7 @@
       const a=attrs(lines[i]),source=url(lines[i+1],base);
       if(!a.CODECS)return reject('视频档位缺少 CODECS');
       if(!ccGroups.has(a['CLOSED-CAPTIONS']))return reject('视频档位未关联英文 CC1');
-      if(!native(source)||!source.includes('.m3u8'))return reject('视频地址不是支持的 CatchUp 列表');
+      if(!native(source)||!source.includes('.m3u8'))return reject('视频地址不是支持的 Live/CatchUp 列表');
       const pathway=a['PATHWAY-ID']||'default';
       variants.push({index:i,attrs:a,pathway});
       const bandwidth=Number(a.BANDWIDTH)||Infinity;
@@ -161,7 +167,8 @@
     if(!rows.length)return reject('没有可用视频档位');
     // Register only after every variant has passed validation.
     for(const value of groups.values()){
-      if(!write('registry-'+value.key,{source:value.source,at:Date.now()}))return reject('字幕资源注册写入失败');
+      if(!write('registry-'+value.key,{source:value.source,identity:registered.identity,
+        live:!!registered.live,at:Date.now()}))return reject('字幕资源注册写入失败');
       const root=value.source.split('?')[0].replace(/\/[^/]+$/,'');
       if(!write('stream-'+hash(root),{root,key:value.key,at:Date.now()}))return reject('视频资源注册写入失败');
     }
@@ -196,10 +203,13 @@
         segments.push({source:segment,previous});previous=segment;
       }
     }
-    if(!ended||pending||!count||!out.some(line=>line.startsWith('#EXT-X-TARGETDURATION:')))return;
+    if((!ended&&!record.live)||pending||!count||!out.some(line=>line.startsWith('#EXT-X-TARGETDURATION:')))return false;
     // Unencrypted sidecars deliberately omit the video KEY/MAP/BYTERANGE tags.
-    write('playlist-'+key,{version:VERSION,source:source.split('?')[0],body:out.join('\n')+'\n',segments,at:Date.now()});
+    if(!write('playlist-'+key,{version:VERSION,source:source.split('?')[0],body:out.join('\n')+'\n',
+      identity:record.identity,liveSource:!!record.live,live:!!record.live&&!ended,
+      segments,at:Date.now()}))return false;
     log('字幕列表就绪 '+count+' 个片段');
+    return true;
   }
   function captionRecord(data,source){
     const root=source.split('?')[0].replace(/\/[^/]+$/,'');
@@ -463,13 +473,15 @@
     const list=/^https:\/\/hls-amt\.itunes\.apple\.com\/__loon_f1_cc\/v1\/([a-f0-9]+)\/index\.m3u8$/.exec(source);
     if(list){
       const record=read('playlist-'+list[1]);
-      if(record&&record.version===VERSION&&Date.now()-record.at<14400000)send(record.body,'application/vnd.apple.mpegurl');
+      const registered=read('registry-'+list[1]);
+      if(!registered||!native(registered.source)||Date.now()-registered.at>=14400000){send('Not found','text/plain',404);return;}
+      // A live playlist is a moving window; every reload must fetch Apple's latest list.
+      if(record&&record.version===VERSION&&record.identity===registered.identity
+        &&record.liveSource===!!registered.live&&!record.live&&Date.now()-record.at<14400000)send(record.body,'application/vnd.apple.mpegurl');
       else {
-        const registered=read('registry-'+list[1]);
-        if(!registered||!native(registered.source)){send('Not found','text/plain',404);return;}
         fetchSource(registered.source,false,body=>{
-          media(body,registered.source);
-          const ready=read('playlist-'+list[1]);
+          const updated=media(body,registered.source);
+          const ready=updated&&read('playlist-'+list[1]);
           if(ready)send(ready.body,'application/vnd.apple.mpegurl');else send('Subtitle playlist unavailable','text/plain',503);
         },()=>send('Subtitle playlist unavailable','text/plain',503),3000);
       }

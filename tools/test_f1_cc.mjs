@@ -36,6 +36,8 @@ function run(url,body,{request=false,apiFails=false,sources={},hangSource=false,
       assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.Cookie,undefined);
       assert.equal(options['auto-redirect'],false);assert.equal(options.insecure,false);
       assert.ok(!options.url.includes('streaming-key-delivery'));
+      assert.match(options.url,/^https:\/\/linear(?:-(?:ak|ap|fa)-[a-z0-9-]+)?\.tv\.apple\.com\//,
+        'caption sources come directly from Apple, without a third-party live API');
       late=()=>Object.prototype.hasOwnProperty.call(sources,options.url)
         ?callback(null,{status:200},sources[options.url]):callback('network timeout',null,null);
       if(!hangSource)late();
@@ -255,9 +257,9 @@ const registeredStatic={canonicalMetadata:{leagueShortName:'F1'},airingType:'OnD
 const routed=JSON.parse(run(uts,JSON.stringify(registeredStatic)).body);
 assert.ok(routed.assets.hlsUrl.includes('/__f1_replay_master/'),'static F1 subtitles take priority over AI');
 assert.equal(routed.assets.fpsKeyServerUrl,keyServer);
-for(const change of [{airingType:'Live'},{airingType:undefined},{canonicalMetadata:{leagueShortName:'NFL'}}]){
+for(const change of [{airingType:undefined},{canonicalMetadata:{leagueShortName:'NFL'}}]){
   const value={...metadata.data.playables[0],...change};
-  assert.deepEqual(run(uts,JSON.stringify(value)),{},'live, unknown airing types and non-F1 pass through');
+  assert.deepEqual(run(uts,JSON.stringify(value)),{},'unknown airing types and non-F1 pass through');
 }
 assert.deepEqual(run(uts,JSON.stringify(metadata),{key:''}),{});
 assert.deepEqual(run(uts,JSON.stringify(metadata),{storageFails:true}),{});
@@ -491,3 +493,49 @@ if(existsSync(fixture)){
   console.log('Real capture: six full video fragments decoded into timed English CC without decrypting or changing video.');
 }
 console.log('F1 CC experiment passed: generic event registration, master/media mapping, CC timing, video passthrough, sidecar translation and caching.');
+
+// A live source is discovered in Apple's UTS metadata, without /active or a
+// fixed event ID. Exercise rolling windows on each supported CDN and path.
+for(const delivery of ['Live','CatchUp'])for(const cdn of ['ak','ap','fa']){
+  const liveMaster=masterURL.replace('generic-event','live-'+delivery+'-'+cdn);
+  const liveStream=stream.replace('linear-ak-','linear-'+cdn+'-').replace('/CatchUp/','/'+delivery+'/');
+  const liveMetadata={airingType:'Live',assets:{hlsUrl:liveMaster,fpsKeyServerUrl:keyServer,
+    fpsKeyServerQueryParameters:{'reference-id':liveMaster.split('referenceId=')[1]}}};
+  const liveRouted=JSON.parse(run(uts,JSON.stringify(liveMetadata)).body);
+  const liveBridge=liveRouted.assets.hlsUrl;
+  assert.ok(liveBridge.includes('/__loon_f1_cc/'));
+  assert.deepEqual({...liveRouted.assets,hlsUrl:liveMaster},liveMetadata.assets,
+    'live registration preserves every native authorization field');
+  assert.deepEqual(run(uts,JSON.stringify(liveMetadata),{key:''}),{});
+  const liveOutput=run(liveBridge,null,{request:true,sources:{[liveMaster]:master.replaceAll(stream,liveStream)}}).response.body;
+  const liveList=/URI="(https:\/\/hls-amt[^" ]+)"/.exec(liveOutput)[1];
+  const rolling=media.replace('#EXT-X-ENDLIST\n','');
+  const first=run(liveList,null,{request:true,sources:{[liveStream+'index.m3u8']:rolling}}).response;
+  assert.equal(first.status,200);
+  assert.ok(!first.body.includes('#EXT-X-ENDLIST'));
+  assert.ok(!first.body.includes('#EXT-X-KEY'));
+  const liveSegment=first.body.split('\n').find(line=>line.startsWith('https://'));
+  run(liveStream+'Segment(0).m4v',binary);
+  assert.ok(run(liveSegment,null,{request:true}).response.body.includes('你好'),
+    'live CC uses the configured DeepSeek translator');
+  const next=rolling.replace('MEDIA-SEQUENCE:0','MEDIA-SEQUENCE:1').replace('Segment(0)','Segment(1)');
+  const second=run(liveList,null,{request:true,sources:{[liveStream+'index.m3u8']:next}}).response;
+  assert.equal(second.status,200);
+  assert.ok(second.body.includes('#EXT-X-MEDIA-SEQUENCE:1'));
+  assert.ok(second.body.includes(encodeURIComponent(liveStream+'Segment(1).m4v')));
+  assert.ok(!second.body.includes(encodeURIComponent(liveStream+'Segment(0).m4v')),
+    'reloads must drop segments that have left the live window');
+  assert.equal(run(liveList,null,{request:true,sources:{[liveStream+'index.m3u8']:'#EXTM3U\ninvalid'}}).response.status,503,
+    'malformed updates must not serve the previously cached window');
+  assert.equal(run(liveList,null,{request:true}).response.status,503);
+  const ended=run(liveList,null,{request:true,sources:{[liveStream+'index.m3u8']:next+'#EXT-X-ENDLIST\n'}}).response;
+  assert.ok(ended.body.includes('#EXT-X-ENDLIST'));
+  assert.equal(run(liveList,null,{request:true}).response.body,ended.body,
+    'completed live sessions can reuse the final playlist');
+  assert.equal(run(liveBridge,null,{request:true}).response.headers.Location,liveMaster);
+}
+const nonF1Live={airingType:'Live',canonicalMetadata:{leagueShortName:'NFL'},assets:{
+  hlsUrl:masterURL.replace('umc.cmr.f1live.','umc.cmr.nfllive.')}};
+assert.deepEqual(run(uts,JSON.stringify(nonF1Live)),{});
+assert.ok(!runtime.includes('f1.rexchen.si'));
+console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolling windows, DeepSeek, finalization and native fallbacks.');
