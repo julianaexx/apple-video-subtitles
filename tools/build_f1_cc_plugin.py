@@ -39,7 +39,7 @@ def build(base, script_url):
         + 'script-path=' + script_url + ',requires-body=true,max-size=0,timeout=2,tag=F1.CC.Register' + arguments,
         r'http-response ^https:\/\/hls(?:-amt)?\.itunes\.apple\.com\/itunes-assets\/HLSSportsVodVideo\d+\/v4\/[A-Za-z0-9_./-]+\/P\d+_A\d+_en_subtitles[^/?#]*-\d+\.(?:webvtt|vtt)(?:\?[^\s#]*)?$ '
         + 'script-path=' + script_url + ',requires-body=true,max-size=65536,timeout=18,tag=F1.CC.NativeVTT' + arguments,
-        r'http-request ^https:\/\/hls-amt\.itunes\.apple\.com\/__loon_f1_cc\/v1\/(?:[a-f0-9]+\/(?:master|index)\.m3u8|segment\.vtt\?src=[^&]+)$ '
+        r'http-request ^https:\/\/hls-amt\.itunes\.apple\.com\/__loon_f1_cc\/v1\/(?:status|[a-f0-9]+\/(?:master|index)\.m3u8|segment\.vtt\?src=[^&]+)$ '
         + 'script-path=' + script_url + ',timeout=22,tag=F1.CC.Subtitles' + arguments,
     ]
     lines[at:at] = rules + ['']
@@ -50,7 +50,7 @@ def build(base, script_url):
     if any(re.fullmatch(r'linear-(?:ak|ap|fa)-[a-z0-9-]+\.tv\.apple\.com', host) for host in hosts):
         raise ValueError('native F1 media hosts must not be intercepted; fetch CC on the subtitle path')
     lines[0] = '#!name=Apple TV 中文字幕 + Fitness+ / F1 可选翻译'
-    lines[1] = '#!desc=20261129c；移除 F1 音视频 CDN 的 MITM 和响应拦截；原生媒体直接播放，字幕请求单独读取英文 CC 并使用自填翻译服务；保留点播及 Fitness+'
+    lines[1] = '#!desc=20261129d；按实际 Apple 路径识别直播滚动清单，保留原生编码声明；字幕独立读取 CC；提供本地播放链路状态页；保留点播及 Fitness+'
     return '\n'.join(lines) + '\n'
 
 

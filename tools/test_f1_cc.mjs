@@ -83,7 +83,8 @@ const bridge=rewrite.data.playables[0].assets.hlsUrl;
 assert.ok(bridge.includes('/master.m3u8'));
 const output=run(bridge,null,{request:true,sources:{[masterURL]:master}}).response.body;
 assert.ok(output.includes('简体中文（F1 AI 实验）'));
-assert.ok(output.includes('CODECS="avc1,wvtt"'));
+assert.ok(output.includes('CODECS="avc1"'));
+assert.ok(!output.includes('wvtt'),'plain WebVTT must not change the native codec declaration');
 assert.ok(output.includes(stream+'index.m3u8'));
 assert.equal(calls.length,0);
 const listURL=/URI="(https:\/\/hls-amt[^" ]+)"/.exec(output)[1];
@@ -113,6 +114,9 @@ for(const key of [...store.keys()])if(key.startsWith('f1cc-playlist-')||key.star
 const eagerList=run(listURL,null,{request:true,sources:{[stream+'index.m3u8']:media}}).response.body;
 assert.ok(eagerList.includes('segment.vtt'));
 assert.ok(run(segmentURL,null,{request:true,sources:{[stream+'Segment(0).m4v']:binary}}).response.body.includes('你好'));
+for(const key of [...store.keys()])if(key.startsWith('f1cc-segment-'))store.delete(key);
+assert.ok(run(segmentURL,null,{request:true,sources:{[stream+'Segment(0).m4v']:binary.buffer}}).response.body.includes('你好'),
+  'HTTP binary bodies may be ArrayBuffer rather than Uint8Array');
 
 // Reconstruct a real multivariant structure recorded in the upstream São Paulo
 // payload, including its audio, iframe and multi-CDN pathway attributes.
@@ -545,7 +549,8 @@ console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolli
 {
   const fixture=JSON.parse(readFileSync(new URL('../tests/fixtures/f1-live-layout.json',import.meta.url),'utf8'));
   const capturedMasterURL=masterURL.replace('generic-event','captured-live');
-  const page={airingType:'Live',assets:{hlsUrl:capturedMasterURL}};
+  // Even if UTS labels this OnDemand, the actual Live/channel source is rolling.
+  const page={canonicalMetadata:{leagueShortName:'F1'},airingType:'OnDemand',assets:{hlsUrl:capturedMasterURL}};
   const capturedBridge=JSON.parse(run(uts,JSON.stringify(page)).body).assets.hlsUrl;
   const full=run(capturedBridge,null,{request:true,sources:{[capturedMasterURL]:fixture.master}}).response;
   assert.equal(full.status,200);
@@ -553,6 +558,10 @@ console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolli
   assert.equal((full.body.match(/#EXT-X-I-FRAME-STREAM-INF:/g)||[]).length,39);
   assert.equal((full.body.match(/TYPE=AUDIO/g)||[]).length,18);
   assert.equal((full.body.match(/TYPE=SUBTITLES/g)||[]).length,3);
+  assert.deepEqual(full.body.split('\n').filter(line=>line.startsWith('#EXT-X-STREAM-INF:'))
+    .map(line=>line.replace(/,SUBTITLES="[^"]+"/,'')),
+    fixture.master.split('\n').filter(line=>line.startsWith('#EXT-X-STREAM-INF:')),
+    'all recorded video/audio encoding attributes must remain exact');
   assert.ok(full.body.includes('linear-ap-b-har-prod-a.tv.apple.com'));
   // Replay the recorded 08 rendition, for which the capture includes CC packets.
   const lines=fixture.master.split('\n'),rendition=[];
@@ -596,3 +605,18 @@ console.log('F1 live passed: Apple UTS discovery, three CDNs, Live/CatchUp rolli
   assert.ok(translated.includes('X-TIMESTAMP-MAP='));
   console.log('Recorded F1 live passed: native media untouched, 108 variants, 39 iframes, 18 audio tracks, separate CC fetch and translation.');
 }
+
+const statusURL='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/status';
+const diagnostics=run(statusURL,null,{request:true}).response;
+assert.equal(diagnostics.status,200);
+assert.ok(diagnostics.body.includes(runtimeVersion));
+assert.ok(diagnostics.body.includes('HTTP 200'));
+assert.ok(diagnostics.body.includes('直播滚动清单'));
+assert.ok(diagnostics.body.includes('已返回中文字幕'));
+for(const secret of ['sk-testonly','apple-secret','account-secret',masterURL,'Racing Bulls']){
+  assert.ok(!diagnostics.body.includes(secret),'status exposes only stage results, without keys, URLs or caption content');
+}
+run(bridge,null,{request:true});
+assert.ok(run(statusURL,null,{request:true}).response.body.includes('回退到 Apple 原生播放'));
+assert.equal(run(statusURL,null,{request:true,storageFails:true}).response.status,200);
+console.log('Local F1 diagnostics passed: stage results, version, native fallback and credential redaction.');

@@ -82,6 +82,10 @@ class UnifiedReleaseTests(unittest.TestCase):
                 self.assertFalse(any(re.search(pattern, root + filename) for pattern in rules))
         self.assertNotIn('f1.rexchen.si', self.files['scripts/f1-cc-deepseek.js'])
 
+    def test_local_status_page_uses_the_existing_subtitle_runtime(self):
+        line = next(line for line in self.plugin.splitlines() if 'tag=F1.CC.Subtitles,' in line)
+        self.assertRegex('https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/status', line.split(' ', 2)[1])
+
     def test_static_subtitles_are_complete_and_served_by_our_repository(self):
         urls = set(re.findall(r'script-path=(https://[^,\s]+)', self.plugin))
         prefix = 'https://raw.githubusercontent.com/julianaexx/apple-video-subtitles/main/'

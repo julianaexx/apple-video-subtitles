@@ -1,6 +1,6 @@
 // F1 live/catch-up CC sidecar. Does not alter media bytes.
 (function () {
-  const VERSION='f1cc-20261129c', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
+  const VERSION='f1cc-20261129d', PREFIX='https://hls-amt.itunes.apple.com/__loon_f1_cc/v1/';
   const args=typeof $argument==='object' && $argument ? $argument : {};
   const service=AppleTranslation.create(args),model=service.model;
   let done=false,timer=null;
@@ -19,6 +19,26 @@
   function hash(text){let h=2166136261;for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);return(h>>>0).toString(16);}
   function read(key){try{return JSON.parse($persistentStore.read('f1cc-'+key)||'null');}catch(_){return null;}}
   function write(key,value){try{return $persistentStore.write(JSON.stringify(value),'f1cc-'+key);}catch(_){return false;}}
+  function mark(stage,detail){
+    try{
+      const previous=read('diagnostics');
+      const value=previous&&previous.version===VERSION?previous:{version:VERSION,stages:{}};
+      const row=value.stages[stage];
+      value.stages[stage]={at:new Date().toISOString(),detail,count:row?row.count+1:1};
+      write('diagnostics',value);
+    }catch(_){/* Diagnostics must never affect playback. */}
+  }
+  function diagnostics(){
+    const value=read('diagnostics'),stages=value&&value.version===VERSION?value.stages:{};
+    const labels={'metadata':'节目登记','master':'主清单处理','native-master':'Apple 主清单',
+      'native-playlist':'Apple 子清单','subtitle-list':'字幕清单','native-caption':'CC 片段',
+      'caption':'CC 提取','translation':'字幕翻译','fallback':'播放回退','runtime':'脚本错误'};
+    return ['F1 '+VERSION,'翻译服务：'+service.label,'翻译凭据：'+(service.ready?'已配置':'未配置'),
+      ...Object.keys(labels).map(key=>{
+        const row=stages[key];
+        return labels[key]+'：'+(row?row.detail+' | '+row.at+' | '+row.count+' 次':'尚未观察到请求');
+      })].join('\n')+'\n';
+  }
   function url(value,base){
     if(typeof value!=='string'||/[\s#]/.test(value))return null;
     if(!/^https:\/\//.test(value)){
@@ -34,11 +54,13 @@
   function send(body,type,status){finish({response:{status:status||200,headers:{'Content-Type':type,'Cache-Control':'no-store'},body}});}
   function slot(url){return 'segment-'+(parseInt(hash(url.split('?')[0]),16)%128);}
   function masterSource(value){return /^https:\/\/(?:linear\.tv\.apple\.com\/v1\/hls\/playlist\.m3u8|play(?:-edge)?\.itunes\.apple\.com\/WebObjects\/MZPlayLocal\.woa\/hls\/subscription\/playlist\.m3u8)\?[^#\s]+$/.test(value||'');}
-  function redirect(target){finish({response:{status:302,headers:{Location:target,'Cache-Control':'no-store'},body:''}});}
+  function redirect(target){mark('fallback','回退到 Apple 原生播放');finish({response:{status:302,headers:{Location:target,'Cache-Control':'no-store'},body:''}});}
   function fetchSource(target,binary,callback,fallback,ms){
     if(!masterSource(target)&&!native(target)){fallback();return;}
+    const stage=masterSource(target)?'native-master':binary?'native-caption':'native-playlist';
+    mark(stage,'开始读取');
     let settled=false;
-    timer=setTimeout(()=>{if(settled)return;settled=true;log('原生资源读取超时，放行原播放路径');fallback();},ms);
+    timer=setTimeout(()=>{if(settled)return;settled=true;mark(stage,'读取超时');log('原生资源读取超时，放行原播放路径');fallback();},ms);
     const headers={'Accept-Encoding':'identity',Accept:'*/*'};
     for(const name of Object.keys($request.headers||{})){
       if(/^(user-agent|accept-language)$/i.test(name))headers[name]=$request.headers[name];
@@ -49,13 +71,18 @@
         if(done||settled)return;
         settled=true;
         if(timer!==null){clearTimeout(timer);timer=null;}
-        if(error||!response||Number(response.status)!==200){log('原生资源 HTTP '+(response?Number(response.status)||0:0));fallback();return;}
+        if(error||!response||Number(response.status)!==200){mark(stage,error?'连接失败或超时':'HTTP '+(response?Number(response.status)||0:0));log('原生资源 HTTP '+(response?Number(response.status)||0:0));fallback();return;}
         if(binary){
-          if(!(body instanceof Uint8Array)||body.length>12582912){fallback();return;}
-        }else if(typeof body!=='string'||body.length>2097152){fallback();return;}
-        try{callback(body);}catch(_){fallback();}
+          if(!(body instanceof Uint8Array)){
+            if(Object.prototype.toString.call(body)==='[object ArrayBuffer]')body=new Uint8Array(body);
+            else if(ArrayBuffer.isView(body))body=new Uint8Array(body.buffer,body.byteOffset,body.byteLength);
+          }
+          if(!(body instanceof Uint8Array)||body.length>12582912){mark(stage,'HTTP 200，二进制格式或大小不支持');fallback();return;}
+        }else if(typeof body!=='string'||body.length>2097152){mark(stage,'HTTP 200，文本格式或大小不支持');fallback();return;}
+        mark(stage,'HTTP 200，'+body.length+' 字节/字符');
+        try{callback(body);}catch(_){mark('runtime',stage+' 响应处理异常');fallback();}
       });
-    }catch(_){if(timer!==null){clearTimeout(timer);timer=null;}fallback();}
+    }catch(_){mark(stage,'HTTP 客户端异常');if(timer!==null){clearTimeout(timer);timer=null;}fallback();}
   }
   function field(value,name){const m=new RegExp('(?:\\?|&)'+name+'=([^&#]+)').exec(value);return m?decodeURIComponent(m[1]):null;}
   function identity(value){
@@ -124,11 +151,12 @@
     }
     staticWalk(data);walk(data,false,false);
     if(skipped)log('F1 点播保留原生播放 '+skipped+' 项，英文 WebVTT 按资源翻译');
+    mark('metadata','改写 '+changed+' 项；原生点播 '+skipped+' 项');
     log('静态字幕/F1 直播及回放路由 '+changed+' 项，许可证地址不改写');
     return changed?JSON.stringify(data):null;
   }
   function master(body,base){
-    function reject(reason){log('主列表检查：'+reason);return null;}
+    function reject(reason){mark('master','未注入：'+reason);log('主列表检查：'+reason);return null;}
     if(!service.ready)return reject('翻译服务未配置');
     const id=identity(base),registered=id&&read('event-'+hash(id));
     if(!registered||registered.identity!==id||Date.now()-registered.at>14400000)return reject('节目注册缺失或过期');
@@ -161,14 +189,17 @@
     }
     for(const variant of variants){
       const i=variant.index,a=variant.attrs,group=groups.get(variant.pathway).group;
-      const codecs=a.CODECS.split(',');if(!codecs.includes('wvtt'))codecs.push('wvtt');
-      lines[i]=lines[i].replace(/CODECS="[^"]*"/,'CODECS="'+codecs.join(',')+'"')+',SUBTITLES="'+group+'"';
+      // Plain WebVTT sidecars do not change the native video/audio codecs.
+      lines[i]+=',SUBTITLES="'+group+'"';
     }
     if(!rows.length)return reject('没有可用视频档位');
+    // A currently airing source can be labelled OnDemand by UTS. The native
+    // playlist path also identifies the live pipeline and its rolling window.
+    const live=!!registered.live||[...groups.values()].some(value=>value.source.includes('/Content/HLS_CBC/Live/'));
     // Register only after every variant has passed validation.
     for(const value of groups.values()){
       if(!write('registry-'+value.key,{source:value.source,identity:registered.identity,
-        live:!!registered.live,at:Date.now()}))return reject('字幕资源注册写入失败');
+        live,at:Date.now()}))return reject('字幕资源注册写入失败');
       const root=value.source.split('?')[0].replace(/\/[^/]+$/,'');
       if(!write('stream-'+hash(root),{root,key:value.key,at:Date.now()}))return reject('视频资源注册写入失败');
     }
@@ -183,6 +214,7 @@
         return name+'="'+(url(value,base)||value)+'"';
       });
     });
+    mark('master','已注入 '+rows.length+' 组；视频档位 '+variants.length+'；'+(live?'直播滚动清单':'回放清单'));
     log('注入 CC 中文轨 '+rows.length+' 组');return output.join('\n');
   }
   function media(body,source){
@@ -209,6 +241,7 @@
       identity:record.identity,liveSource:!!record.live,live:!!record.live&&!ended,
       segments,at:Date.now()}))return false;
     log('字幕列表就绪 '+count+' 个片段');
+    mark('subtitle-list','已生成 '+count+' 个片段；'+(ended?'已结束':'滚动更新'));
     return true;
   }
   function captionRecord(data,source){
@@ -271,13 +304,14 @@
     const data=F1Captions.extract(bytes);
     if(!Number.isFinite(data.duration)||data.duration<=0||data.duration>20)return null;
     const record=captionRecord(data,source);
+    mark('caption','提取 '+data.frames.length+' 帧 CC；时长 '+data.duration+' 秒');
     // Avoid binary payload and caption text in logs.
     log('提取稳定 CC，视频原样放行');
     return record;
   }
   function translate(record,relatedRecords=[]){
     const body=record.body;
-    const deliver=value=>record.native?finish({body:value}):send(value,'text/vtt; charset=utf-8');
+    const deliver=value=>{mark('translation',/[\u3400-\u9fff]/.test(value)?'已返回中文字幕':'已返回英文或空字幕');return record.native?finish({body:value}):send(value,'text/vtt; charset=utf-8');};
     const chunks=body.replace(/\r\n?/g,'\n').trimEnd().split(/\n{2,}/),cues=[];
     if(record.native&&(!/^\ufeff?WEBVTT(?:[ \t].*)?(?:\n|$)/.test(chunks[0])||body.length>65536)){finish({});return;}
     const timing=/^(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}\s+-->\s+(?:\d{2,}:)?\d{2}:\d{2}\.\d{3}(?:\s.*)?$/;
@@ -439,6 +473,9 @@
 
   try{
     const source=$request.url;
+    if(typeof $response==='undefined'&&source===PREFIX+'status'){
+      send(diagnostics(),'text/plain; charset=utf-8');return;
+    }
     if(typeof $response!=='undefined'){
       if(Number($response.status)!==200){finish({});return;}
       const body=$response.body;
@@ -455,8 +492,9 @@
     }
     const main=/^https:\/\/hls-amt\.itunes\.apple\.com\/__loon_f1_cc\/v1\/([a-f0-9]+)\/master\.m3u8$/.exec(source);
     if(main){
+      mark('master','已收到主清单请求');
       const record=read('event-'+main[1]);
-      if(!record||!masterSource(record.source)){send('Not found','text/plain',404);return;}
+      if(!record||!masterSource(record.source)){mark('master','节目登记缺失或原生地址无效，HTTP 404');send('Not found','text/plain',404);return;}
       // Old Apple TV sessions can retain a pre-update synthetic VOD URL.
       // Refresh native caption registration even before the UTS page reloads.
       if(/^https:\/\/play(?:-edge)?\.itunes\.apple\.com\//.test(record.source)){
@@ -472,9 +510,10 @@
     }
     const list=/^https:\/\/hls-amt\.itunes\.apple\.com\/__loon_f1_cc\/v1\/([a-f0-9]+)\/index\.m3u8$/.exec(source);
     if(list){
+      mark('subtitle-list','已收到字幕清单请求');
       const record=read('playlist-'+list[1]);
       const registered=read('registry-'+list[1]);
-      if(!registered||!native(registered.source)||Date.now()-registered.at>=14400000){send('Not found','text/plain',404);return;}
+      if(!registered||!native(registered.source)||Date.now()-registered.at>=14400000){mark('subtitle-list','字幕资源登记缺失或过期，HTTP 404');send('Not found','text/plain',404);return;}
       // A live playlist is a moving window; every reload must fetch Apple's latest list.
       if(record&&record.version===VERSION&&record.identity===registered.identity
         &&record.liveSource===!!registered.live&&!record.live&&Date.now()-record.at<14400000)send(record.body,'application/vnd.apple.mpegurl');
@@ -482,8 +521,8 @@
         fetchSource(registered.source,false,body=>{
           const updated=media(body,registered.source);
           const ready=updated&&read('playlist-'+list[1]);
-          if(ready)send(ready.body,'application/vnd.apple.mpegurl');else send('Subtitle playlist unavailable','text/plain',503);
-        },()=>send('Subtitle playlist unavailable','text/plain',503),3000);
+          if(ready)send(ready.body,'application/vnd.apple.mpegurl');else{mark('subtitle-list','清单格式不支持或写入失败，HTTP 503');send('Subtitle playlist unavailable','text/plain',503);}
+        },()=>{mark('subtitle-list','Apple 子清单读取失败，HTTP 503');send('Subtitle playlist unavailable','text/plain',503);},3000);
       }
       return;
     }
@@ -504,6 +543,7 @@
       }
     }else send('Not found','text/plain',404);
   }catch(error){
+    mark('runtime','格式或处理异常；未记录原始数据');
     log('格式暂不支持，安全跳过 '+String(error.message||'error'));
     if(typeof $response!=='undefined')finish({});else send('WEBVTT\n\n','text/vtt; charset=utf-8');
   }
